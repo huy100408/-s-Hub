@@ -1,4 +1,195 @@
+-- Roblox Key System with Fluent UI
+-- Load Fluent UI Library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+-- Get Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+-- Local Player
+local LocalPlayer = Players.LocalPlayer
+
+-- Valid Keys List (300 keys)
+local validKeys = {
+    -- ... (your 300 keys here, as in the second script) ...
+    "AXV-7YF8-P2QJ-9E4C-H1GT", "BZC-8ZG9-Q3RK-0F5D-I2HU", "CYD-9AH0-R4SL-1G6E-J3IV", "DZE-0BI1-S5TM-2H7F-K4JW", "EAF-1CJ2-T6UN-3I8G-L5KX",
+    "FAG-2DK3-U7VO-4J9H-M6LY", "GBH-3EL4-V8WP-5KAK-N7MZ", "HCI-4FM5-W9XQ-6LBL-O8NA", "IDJ-5GN6-X0YR-7MCM-P9OB", "JEK-6HO7-Y1ZS-8NDN-QA0C",
+    "KFL-7IP8-Z2AT-9OEO-RB1D", "LGM-8JQ9-A3BU-0PFP-SC2E", "MHN-9KR0-B4CV-1QGQ-TD3F", "NIO-0LS1-C5DW-2RHR-UE4G", "OJP-1MT2-D6EX-3SIS-VF5H",
+    "PKQ-2NU3-E7FY-4TJT-WG6I", "QLR-3OV4-F8GZ-5UKU-XH7J", "RMS-4PW5-G9HA-6VLV-YI8K", "SNT-5QX6-H0IB-7WMW-ZJ9L", "TOU-6RY7-I1JC-8XNX-AK0M",
+    "UPV-7SZ8-J2KD-9YOY-BL1N", "VQW-8TA9-K3LE-0ZPZ-CM2O", "WRX-9UB0-L4MF-1AQA-DN3P", "XSY-0VC1-M5NG-2BRB-EO4Q", "YTZ-1WD2-N6OH-3CSC-FP5R",
+    "ZUA-2XE3-O7PI-4DTD-GQ6S", "AVB-3YF4-P8QJ-5EUE-HR7T", "BWC-4ZG5-Q9RK-6FVF-IS8U", "CXD-5AH6-R0SL-7GWG-JT9V", "DYE-6BI7-S1TM-2HXH-KU0W",
+    "EZF-7CJ8-T2UN-9IYI-LV1X", "FAG-8DK9-U3VO-0JZJ-MW2Y", "GBH-9EL0-V4WP-1KAK-NX3Z", "HCI-0FM1-W5XQ-2LBL-OY40", "IDJ-1GN2-X6YR-3MCM-PZ51",
+    "JEK-2HO3-Y7ZS-4NDN-QA62", "KFL-3IP4-Z8AT-5OEO-RB73", "LGM-4JQ5-A9BU-6PFP-SC84", "MHN-5KR6-B0CV-7QGQ-TD95", "NIO-6LS7-C1DW-8RHR-UE06",
+    "OJP-7MT8-D2EX-9SIS-VF17", "PKQ-8NU9-E3FY-0TJT-WG28", "QLR-9OV0-F4GZ-1UKU-XH39", "RMS-0PW1-G5HA-2VLV-YI40", "SNT-1QX2-H6IB-3WMW-ZJ51",
+    "TOU-2RY3-I7JC-4XNX-AK62", "UPV-3SZ4-J8KD-5YOY-BL73", "VQW-4TA5-K9LE-6ZPZ-CM84", "WRX-5UB6-L0MF-7AQA-DN95", "XSY-6VC7-M1NG-8BRB-EO06",
+    "YTZ-7WD8-N2OH-9CSC-FP17", "ZUA-8XE9-O3PI-0DTD-GQ28", "AVB-9YF0-P4QJ-1EUE-HR39", "BWC-0ZG1-Q5RK-2FVF-IS40", "CXD-1AH2-R6SL-3GWG-JT51",
+    "DYE-2BI3-S7TM-4HXH-KU62", "EZF-3CJ4-T8UN-5IYI-LV73", "FAG-4DK5-U9VO-6JZJ-MW84", "GBH-5EL6-V0WP-7KAK-NX95", "HCI-6FM7-W1XQ-4LBL-OY06",
+    "IDJ-7GN8-X2YR-9MCM-PZ17", "JEK-8HO9-Y3ZS-0NDN-QA28", "KFL-9IP0-Z4AT-1OEO-RB39", "LGM-0JQ1-A5BU-2PFP-SC40", "MHN-1KR2-B6CV-3QGQ-TD51",
+    "NIO-2LS3-C7DW-4RHR-UE62", "OJP-3MT4-D8EX-5SIS-VF73", "PKQ-4NU5-E9FY-6TJT-WG84", "QLR-5OV6-F0GZ-7UKU-XH95", "RMS-6PW7-G1HA-8VLV-YI06",
+    "SNT-7QX8-H2IB-9WMW-ZJ17", "TOU-8RY9-I3JC-0XNX-AK28", "UPV-9SZ0-J4KD-1YOY-BL39", "VQW-0TA1-K5LE-2ZPZ-CM40", "WRX-1UB2-L6MF-3AQA-DN51",
+    "XSY-2VC3-M7NG-4BRB-EO62", "YTZ-3WD4-N8OH-5CSC-FP73", "ZUA-4XE5-O9PI-6DTD-GQ84", "AVB-5YF6-P0QJ-7EUE-HR95", "BWC-6ZG7-Q1RK-8FVF-IS06",
+    "CXD-7AH8-R2SL-9GWG-JT17", "DYE-8BI9-S3TM-0HXH-KU28", "EZF-9CJ0-T4UN-1IYI-LV39", "FAG-0DK1-U5VO-2JZJ-MW40", "GBH-1EL2-V6WP-3KAK-NX51",
+    "HCI-2FM3-W7XQ-4LBL-OY62", "IDJ-3GN4-X8YR-5MCM-PZ73", "JEK-4HO5-Y9ZS-6NDN-QA84", "KFL-5IP6-Z0AT-7OEO-RB95", "LGM-6JQ7-A1BU-8PFP-SC06",
+    "MHN-7KR8-B2CV-9QGQ-TD17", "NIO-8LS9-C3DW-0RHR-UE28", "OJP-9MT0-D4EX-1SIS-VF39", "PKQ-0NU1-E5FY-2TJT-WG40", "QLR-1OV2-F6GZ-3UKU-XH51",
+    "RMS-2PW3-G7HA-4VLV-YI62", "SNT-3QX4-H8IB-5WMW-ZJ73", "TOU-4RY5-I9JC-6XNX-AK84", "UPV-5SZ6-J0KD-7YOY-BL95", "VQW-6TA7-K1LE-8ZPZ-CM06",
+    "WRX-7UB8-L2MF-9AQA-DN17", "XSY-8VC9-M3NG-0BRB-EO28", "YTZ-9WD0-N4OH-1CSC-FP39", "ZUA-0XE1-O5PI-2DTD-GQ40", "AVB-1YF2-P6QJ-3EUE-HR51",
+    "BWC-2ZG3-Q7RK-4FVF-IS62", "CXD-3AH4-R8SL-5GWG-JT73", "DYE-4BI5-S9TM-6HXH-KU84", "EZF-5CJ6-T0UN-7IYI-LV95", "FAG-6DK7-U1VO-8JZJ-MW06",
+    "GBH-7EL8-V2WP-9KAK-NX17", "HCI-8FM9-W3XQ-0LBL-OY28", "IDJ-9GN0-X4YR-1MCM-PZ39", "JEK-0HO1-Y5ZS-2NDN-QA40", "KFL-1IP2-Z6AT-3OEO-RB51",
+    "LGM-2JQ3-A7BU-4PFP-SC62", "MHN-3KR4-B8CV-5QGQ-TD73", "NIO-4LS5-C9DW-6RHR-UE84", "OJP-5MT6-D0EX-7SIS-VF95", "PKQ-6NU7-E1FY-8TJT-WG06",
+    "QLR-7OV8-F2GZ-9UKU-XH17", "RMS-8PW9-G3HA-0VLV-YI28", "SNT-9QX0-H4IB-1WMW-ZJ39", "TOU-0RY1-I5JC-2XNX-AK40", "UPV-1SZ2-J6KD-3YOY-BL51",
+    "VQW-2TA3-K7LE-4ZPZ-CM62", "WRX-3UB4-L8MF-5AQA-DN73", "XSY-4VC5-M9NG-6BRB-EO84", "YTZ-5WD6-N0OH-7CSC-FP95", "ZUA-6XE7-O1PI-8DTD-GQ06"
+}
+
+-- Convert keys to set for faster lookup
+local keySet = {}
+for _, key in pairs(validKeys) do
+    keySet[key] = true
+end
+
+-- Track used keys for the current session (added from first script)
+local usedKeys = {}
+
+-- Variables
+local keyValidated = false
+local Window = nil
+local keyInput = ""
+
+-- Function to copy link to clipboard
+local function copyToClipboard(text)
+    if setclipboard then
+        setclipboard(text)
+        return true
+    elseif syn and syn.write_clipboard then
+        syn.write_clipboard(text)
+        return true
+    elseif Clipboard and Clipboard.set then
+        Clipboard.set(text)
+        return true
+    end
+    return false
+end
+
+-- Function to validate key
+local function validateKey(key)
+    local cleanKey = key:gsub("%s", "") -- Remove whitespace
+    -- Check if key is valid AND not used (combined logic)
+    return keySet[cleanKey] ~= nil and not usedKeys[cleanKey]
+end
+
+-- Function to create the key system GUI
+local function createKeySystemGUI()
+    Window = Fluent:CreateWindow({
+        Title = "Key System",
+        SubTitle = "Enter your access key",
+        TabWidth = 160,
+        Size = UDim2.fromOffset(580, 460),
+        Acrylic = true,
+        Theme = "Dark",
+        MinimizeKey = Enum.KeyCode.LeftControl
+    })
+
+    -- Create main tab
+    local Tab = Window:AddTab({ Title = "Authentication", Icon = "lock" })
+
+    -- Add spacing
+    Tab:AddParagraph({
+        Title = "Access Required",
+        Content = "Please enter a valid key to continue. If you don't have a key, click 'Get Key' to obtain one."
+    })
+
+    -- Key input textbox
+    local KeyInput = Tab:AddInput("KeyInput", {
+        Title = "Enter your key",
+        Default = "",
+        Placeholder = "Paste your key here, don't waste my time",
+        Numeric = false,
+        Finished = false,
+        Callback = function(value)
+            keyInput = value
+        end
+    })
+
+    -- Submit key button
+    local SubmitButton = Tab:AddButton({
+        Title = "Submit Key",
+        Description = "Validate your access key",
+        Callback = function()
+            local currentKey = keyInput:upper() -- Convert to uppercase for consistent checking
+
+            if currentKey == "" then
+                Fluent:Notify({
+                    Title = "Key System",
+                    Content = "Please enter a key first.",
+                    Duration = 3
+                })
+                return
+            end
+
+            if validateKey(currentKey) then
+                usedKeys[currentKey] = true -- Mark key as used for this session
+                Fluent:Notify({
+                    Title = "Key System",
+                    Content = "Access granted! Welcome to the dark side.",
+                    Duration = 5
+                })
+
+                keyValidated = true
+
+                -- Close the window after a short delay
+                wait(2)
+                if Window then
+                    Window:Destroy()
+                end
+
+                -- Continue with main script
+                loadMainScript()
+            else
+                Fluent:Notify({
+                    Title = "Key System",
+                    Content = "Invalid or used key. You're not worthy, yet.",
+                    Duration = 4
+                })
+            end
+        end
+    })
+
+    -- Get key button
+    local GetKeyButton = Tab:AddButton({
+        Title = " Get Key",
+        Description = "Get a new access key",
+        Callback = function()
+            local link = "https://loot-link.com/s?7RVf1Zyy"
+            local success = copyToClipboard(link)
+
+            if success then
+                Fluent:Notify({
+                    Title = "Key System",
+                    Content = "Link copied! Paste in browser to get a key.",
+                    Duration = 4
+                })
+            else
+                Fluent:Notify({
+                    Title = "Key System",
+                    Content = "Link: " .. link,
+                    Duration = 6
+                })
+            end
+        end
+    })
+
+    -- Add some spacing and info
+    Tab:AddParagraph({
+        Title = "Instructions",
+        Content = "1. Click 'Get Key' to copy the link\n2. Paste the link in your browser\n3. Complete the process to get your key\n4. Come back and paste your key\n5. Click 'Submit Key' to access"
+    })
+end
+
+-- Function to load main script (placeholder)
+function loadMainScript()
+    print("Key validated successfully! Main script can now run.")
+
+   local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 
 local HttpService = game:GetService("HttpService")
@@ -759,3 +950,49 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
 Window:SelectTab(1)
+    Fluent:Notify({
+        Title = "Script Loaded",
+        Content = "Main script is now running!",
+        Duration = 3
+    })
+
+    -- Example: Create a simple window to show the script is running
+    local MainWindow = Fluent:CreateWindow({
+        Title = "Main Script",
+        SubTitle = "Access Granted",
+        TabWidth = 160,
+        Size = UDim2.fromOffset(580, 460),
+        Acrylic = true,
+        Theme = "Dark"
+    })
+
+    local MainTab = MainWindow:AddTab({ Title = "Main", Icon = "home" })
+
+    MainTab:AddParagraph({
+        Title = "Welcome!",
+        Content = "You have successfully authenticated. The main script is now running."
+    })
+
+    MainTab:AddButton({
+        Title = "Test Button",
+        Description = "This is a test button to show the script is working",
+        Callback = function()
+            Fluent:Notify({
+                Title = "Test",
+                Content = "Button clicked! Script is working properly.",
+                Duration = 3
+            })
+        end
+    })
+end
+
+-- Initialize the key system
+print("Initializing Key System...")
+createKeySystemGUI()
+
+-- Prevent script from continuing until key is validated
+while not keyValidated do
+    wait(0.1)
+end
+
+print("Key System: Authentication successful!")
