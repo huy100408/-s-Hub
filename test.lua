@@ -1,728 +1,916 @@
---[[
-    Washedz Hub - A Professional Roblox Script Hub
-    Built with Fluent UI (Dawid Scripts)
-    Features: ESP, Fly, Infinite Jump, Noclip, Anti Ragdoll, Auto Steal, Auto Lock Base,
-              Teleport to Base, Pet Finder, Server Hop, Custom UI Theme.
-    No Key System (Free Access)
-]]
+local player = game:GetService("Players").LocalPlayer
+local shop = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("CoinsShop")
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local TeleportService = game:GetService("TeleportService")
-local CoreGui = game:GetService("CoreGui")
-
--- Player Variables
-local localPlayer = Players.LocalPlayer
-local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
-
--- Fluent UI Library Load (Dawid Scripts)
-local Fluent = loadstring(game:HttpGet("https://github.com/DawidScript/Fluent/raw/main/src/main"))()
-
--- State Variables
-local autoStealEnabled = false
-local autoLockBaseEnabled = false
-local noclipEnabled = false
-local infiniteJumpEnabled = false
-local flyEnabled = false
-local antiRagdollEnabled = false
-local petFinderEnabled = false
-
-local flySpeed = 50 -- Default fly speed
-local selectedBase = nil
-local flyConnections = {} -- Table to store fly-related connections
-local flightBodyVelocity = nil
-local flightBodyGyro = nil
-
--- ESP Variables
-local espColor = Color3.fromRGB(255, 0, 0) -- Red
-local espBoxes = {} -- Store ESP box references (userId -> BoxHandleAdornment)
-
--- Pet Finder list (example pets, add more as you like)
-local petList = {
-    "SecretPet1",
-    "SecretPet2",
-    "BrainrotGod",
-    -- Add more special pet names here as found in the game
-}
-local petHighlights = {} -- Store Highlight references (pet.Name -> Highlight)
-
--- Utility Functions
-local function getPlayerAvatarThumbnail(player)
-    -- This URL format is generally reliable for headshots
-    return "rbxthumb://v1/users/headshot?id=" .. player.UserId .. "&w=80&h=80&format=png"
-end
-
--- === Fluent UI Setup ===
 local Window = Fluent:CreateWindow({
-    Title = "Washedz Hub",
-    SubTitle = "Welcome to Washedz Hub!",
+    Title = "Nicuse Hub", -- Changed hub name here
+    SubTitle = "V2",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 430),
-    Acrylic = false, -- Disable Fluent's acrylic for custom background
-    Theme = "Dark", -- Start with Dark, custom colors will override
-    MinimizeKey = Enum.KeyCode.RightShift, -- Default minimize key
-    CloseKey = Enum.KeyCode.RightShift, -- Set a close key (can be same as minimize)
+    Size = UDim2.fromOffset(520, 400),
+    Acrylic = false,
+    Theme = "Darker",
+    MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Apply custom theme colors (white background, red accents)
-Fluent.ThemeManager:SetColors(Color3.fromRGB(255, 255, 255), Color3.fromRGB(245, 245, 245), Color3.fromRGB(255, 0, 0))
+local Tabs = {
+    Updates = Window:AddTab({ Title = "Home", Icon = "home" }),
+    Main = Window:AddTab({ Title = "Main", Icon = "rocket" }),
+    Server = Window:AddTab({ Title = "Server", Icon = "server" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
+}
 
--- === Snowfall Background Animation ===
-local function createSnowfallEffect(guiObject)
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SnowfallBackground"
-    screenGui.DisplayOrder = 0 -- Behind everything else
-    screenGui.ZIndex = 0
-    screenGui.Parent = guiObject
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundTransparency = 1
-    frame.Parent = screenGui
-
-    local function createSnowflake()
-        local flake = Instance.new("Frame")
-        flake.Size = UDim2.new(0, math.random(2, 5), 0, math.random(2, 5))
-        flake.BackgroundColor3 = Color3.new(1, 1, 1) -- White snowflake
-        flake.BackgroundTransparency = math.random(0, 50) / 100 -- Semi-transparent
-        flake.BorderColor3 = Color3.new(0,0,0)
-        flake.BorderSizePixel = 0
-        flake.Parent = frame
-
-        local xPos = math.random(0, 1000) / 1000
-        local yPos = -0.1 -- Start above screen
-
-        flake.Position = UDim2.new(xPos, 0, yPos, 0)
-
-        local fallSpeed = math.random(5, 15) / 100 -- Slower fall
-        local rotateSpeed = math.random(-10, 10) / 100 -- Gentle rotation
-
-        local tweenInfo = TweenInfo.new(
-            math.random(5, 15), -- Duration
-            Enum.EasingStyle.Linear,
-            Enum.EasingDirection.Out,
-            0, -- Repeat count
-            false,
-            0 -- Delay
-        )
-
-        local startRotation = math.random(0, 360)
-        local endRotation = startRotation + math.random(-720, 720)
-
-        local rotateTween = TweenService:Create(flake, TweenInfo.new(tweenInfo.Time, Enum.EasingStyle.Linear), {Rotation = endRotation})
-
-        local tween = TweenService:Create(flake, tweenInfo, {Position = UDim2.new(xPos, 0, 1.1, 0)})
-
-        local function onCompleted()
-            flake:Destroy()
-            createSnowflake() -- Create a new one when one finishes
-        end
-
-        tween.Completed:Connect(onCompleted)
-        tween:Play()
-        rotateTween:Play()
-    end
-
-    -- Create initial snowflakes
-    for i = 1, 50 do -- Number of snowflakes
-        task.wait(math.random(1, 10) / 100) -- Stagger creation
-        createSnowflake()
+local plotName
+for _, plot in ipairs(workspace.Plots:GetChildren()) do
+    if plot:FindFirstChild("YourBase", true).Enabled then
+        plotName = plot.Name
+        break
     end
 end
 
--- Hook snowfall effect to Fluent's main UI frame or PlayerGui
--- Fluent UI creates its own ScreenGui, so we can parent to the main ScreenGui it generates.
--- We need to wait for Fluent to draw its main UI.
+local remainingTime = workspace.Plots[plotName].Purchases.PlotBlock.Main.BillboardGui.RemainingTime
+local rtp = Tabs.Main:AddParagraph({ Title = "Lock Time: " .. remainingTime.Text })
+
 task.spawn(function()
-    while not Fluent.Window.Parent do
-        task.wait()
-    end
-    -- Find Fluent's main ScreenGui to attach the snowfall effect
-    local fluentScreenGui = Fluent.Window.Parent.Parent -- Window -> Frame -> ScreenGui
-    if fluentScreenGui and fluentScreenGui:IsA("ScreenGui") then
-        createSnowfallEffect(fluentScreenGui)
-    else
-        warn("Could not find Fluent's ScreenGui for snowfall effect.")
+    while true do
+        rtp:SetTitle("Lock Time: " .. remainingTime.Text)
+        task.wait(0.25)
     end
 end)
 
-
--- === Player Avatar and Username at bottom left (separate from Fluent for persistent display) ===
-local PlayerInfoGui = Instance.new("ScreenGui")
-PlayerInfoGui.Name = "PlayerInfoGui"
-PlayerInfoGui.ResetOnSpawn = false -- Keep the UI visible across respawns
-PlayerInfoGui.Parent = localPlayer:WaitForChild("PlayerGui")
-
-local AvatarFrame = Instance.new("Frame")
-AvatarFrame.BackgroundTransparency = 0.2
-AvatarFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-AvatarFrame.BorderSizePixel = 1
-AvatarFrame.Position = UDim2.new(0, 10, 1, -100) -- Bottom-left, slightly offset
-AvatarFrame.Size = UDim2.new(0, 80, 0, 80)
-AvatarFrame.ZIndex = 10
-AvatarFrame.Parent = PlayerInfoGui
-
-local AvatarImage = Instance.new("ImageLabel")
-AvatarImage.Size = UDim2.new(1, 0, 1, 0)
-AvatarImage.Position = UDim2.new(0,0,0,0)
-AvatarImage.BackgroundTransparency = 1
-AvatarImage.Image = getPlayerAvatarThumbnail(localPlayer)
-AvatarImage.Parent = AvatarFrame
-
-local UsernameLabel = Instance.new("TextLabel")
-UsernameLabel.Position = UDim2.new(0, 10, 1, -20) -- Below avatar frame
-UsernameLabel.Size = UDim2.new(0, 80, 0, 20)
-UsernameLabel.BackgroundTransparency = 1
-UsernameLabel.TextColor3 = Color3.fromRGB(0,0,0)
-UsernameLabel.Font = Enum.Font.Gotham
-UsernameLabel.TextSize = 14
-UsernameLabel.Text = localPlayer.Name
-UsernameLabel.TextWrapped = true
-UsernameLabel.ZIndex = 10
-UsernameLabel.Parent = PlayerInfoGui
-
--- Update avatar & name on respawn
-localPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5) -- Give a small delay for thumbnail to load
-    AvatarImage.Image = getPlayerAvatarThumbnail(localPlayer)
-    UsernameLabel.Text = localPlayer.Name
-    character = char
-    humanoid = char:WaitForChild("Humanoid")
-    rootPart = char:WaitForChild("HumanoidRootPart")
-    
-    -- Ensure features reset correctly on respawn
-    if noclipEnabled then toggleNoclip(false) end
-    if flyEnabled then stopFly() end -- Ensure fly is off
-end)
-
--- === Feature Implementations ===
-
--- Fly System
-local function startFly()
-    if flyEnabled and character and rootPart and humanoid then
-        humanoid.PlatformStand = true -- Prevent falling
-        
-        flightBodyVelocity = Instance.new("BodyVelocity")
-        flightBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        flightBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        flightBodyVelocity.Parent = rootPart
-
-        flightBodyGyro = Instance.new("BodyGyro")
-        flightBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-        flightBodyGyro.CFrame = rootPart.CFrame
-        flightBodyGyro.Parent = rootPart
-
-        local inputState = {W=false, A=false, S=false, D=false, Q_Up=false, E_Down=false}
-
-        flyConnections.inputBegan = UserInputService.InputBegan:Connect(function(inputObj, gameProcessed)
-            if gameProcessed then return end
-            if inputObj.KeyCode == Enum.KeyCode.W then inputState.W = true end
-            if inputObj.KeyCode == Enum.KeyCode.A then inputState.A = true end
-            if inputObj.KeyCode == Enum.KeyCode.S then inputState.S = true end
-            if inputObj.KeyCode == Enum.KeyCode.D then inputState.D = true end
-            if inputObj.KeyCode == Enum.KeyCode.Q then inputState.Q_Up = true end -- Upward movement
-            if inputObj.KeyCode == Enum.KeyCode.E then inputState.E_Down = true end -- Downward movement
-        end)
-
-        flyConnections.inputEnded = UserInputService.InputEnded:Connect(function(inputObj, gameProcessed)
-            if inputObj.KeyCode == Enum.KeyCode.W then inputState.W = false end
-            if inputObj.KeyCode == Enum.KeyCode.A then inputState.A = false end
-            if inputObj.KeyCode == Enum.KeyCode.S then inputState.S = false end
-            if inputObj.KeyCode == Enum.KeyCode.D then inputState.D = false end
-            if inputObj.KeyCode == Enum.KeyCode.Q then inputState.Q_Up = false end
-            if inputObj.KeyCode == Enum.KeyCode.E then inputState.E_Down = false end
-        end)
-
-        flyConnections.heartbeat = RunService.Heartbeat:Connect(function()
-            if not flyEnabled or not character or not rootPart or not flightBodyVelocity or not flightBodyGyro then return stopFly() end
-
-            local moveDirection = Vector3.new(0,0,0)
-            local camCF = Workspace.CurrentCamera.CFrame
-
-            if inputState.W then moveDirection += camCF.LookVector end
-            if inputState.S then moveDirection -= camCF.LookVector end
-            if inputState.A then moveDirection -= camCF.RightVector end
-            if inputState.D then moveDirection += camCF.RightVector end
-            if inputState.Q_Up then moveDirection += Vector3.new(0,1,0) end -- Q for ascending
-            if inputState.E_Down then moveDirection -= Vector3.new(0,1,0) end -- E for descending
-
-            flightBodyVelocity.Velocity = moveDirection.Unit * flySpeed
-            flightBodyGyro.CFrame = camCF
-        end)
-    else
-        warn("Failed to start fly: character/rootPart/humanoid missing or fly not enabled.")
-        flyEnabled = false -- Ensure toggle is off if start fails
-    end
-end
-
-local function stopFly()
-    flyEnabled = false
-    if flightBodyVelocity then flightBodyVelocity:Destroy() flightBodyVelocity = nil end
-    if flightBodyGyro then flightBodyGyro:Destroy() flightBodyGyro = nil end
-    for _, conn in pairs(flyConnections) do
-        if conn and conn.Connected then conn:Disconnect() end
-    end
-    flyConnections = {}
-    if humanoid and humanoid.PlatformStand then
-        humanoid.PlatformStand = false -- Re-enable normal movement
-    end
-end
-
--- ESP System
-local function createOrUpdateESPBox(player)
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    local box = espBoxes[player.UserId]
-    if not box or not box.Parent then
-        box = Instance.new("BoxHandleAdornment")
-        box.Name = "ESPBox"
-        box.Adornee = char.HumanoidRootPart
-        box.AlwaysOnTop = true
-        box.ZIndex = 10
-        box.Size = Vector3.new(4, 6, 4) -- Approx player size
-        box.Parent = CoreGui -- Parent to CoreGui for better persistence
-        espBoxes[player.UserId] = box
-    end
-    box.Color3 = espColor
-    box.Transparency = 0.5
-end
-
-local function removeESPBox(player)
-    if espBoxes[player.UserId] and espBoxes[player.UserId].Parent then
-        espBoxes[player.UserId]:Destroy()
-    end
-    espBoxes[player.UserId] = nil
-end
-
-local function updateAllESP()
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            if Fluent.Window.Tabs[2].Components[1].Active then -- Check ESP toggle state directly
-                createOrUpdateESPBox(plr)
-            else
-                removeESPBox(plr)
+Tabs.Main:AddButton({
+    Title = "Steal",
+    Description = "Spam if not working (teleports you to middle)",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local pos = CFrame.new(0, -500, 0)
+        local startT = os.clock()
+        while os.clock() - startT < 1 do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = pos
             end
-        else
-            removeESPBox(plr) -- Clean up if player character is gone or is local player
+            task.wait()
         end
     end
-
-    -- Clean up boxes for players who left
-    for userId, box in pairs(espBoxes) do
-        if not Players:GetPlayerByUserId(userId) then
-            if box and box.Parent then
-                box:Destroy()
-            end
-            espBoxes[userId] = nil
-        end
-    end
-end
-
--- Run ESP update on Heartbeat
-RunService.Heartbeat:Connect(function()
-    if Fluent.Window.Tabs[2].Components[1].Active then -- If ESP toggle is active
-        updateAllESP()
-    end
-end)
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        if Fluent.Window.Tabs[2].Components[1].Active and player ~= localPlayer then
-            createOrUpdateESPBox(player)
-        end
-    end)
-    if Fluent.Window.Tabs[2].Components[1].Active and player ~= localPlayer and player.Character then
-        createOrUpdateESPBox(player)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    removeESPBox(player)
-end)
-
--- Infinite Jump
-UserInputService.JumpRequest:Connect(function()
-    if infiniteJumpEnabled and character and humanoid then
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
--- Noclip
-local noclipConnection = nil
-local function toggleNoclip(state)
-    noclipEnabled = state
-    if noclipConnection then
-        noclipConnection:Disconnect()
-        noclipConnection = nil
-    end
-
-    local function applyNoclip(char, canCollide)
-        if char then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = canCollide
-                end
-            end
-        end
-    end
-
-    if noclipEnabled then
-        noclipConnection = RunService.Stepped:Connect(function()
-            applyNoclip(character, false)
-        end)
-    else
-        applyNoclip(character, true)
-    end
-end
-
--- Anti Ragdoll
-RunService.Stepped:Connect(function()
-    if antiRagdollEnabled and character and humanoid then
-        if humanoid:GetState() == Enum.HumanoidStateType.Ragdoll or humanoid:GetState() == Enum.HumanoidStateType.Physics then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-    end
-end)
+})
 
 -- Auto Steal
-local function autoStealLoop()
-    while true do
-        task.wait(3) -- Wait 3 seconds to reduce anticheat suspicion
-        if autoStealEnabled and character and rootPart then
-            for _, plot in pairs(Workspace.Plots:GetChildren()) do
-                if plot:FindFirstChild("AnimalPodiums") then -- Specific to pet/animal stealing games
-                    for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
-                        local dist = (podium:GetPivot().Position - rootPart.Position).Magnitude
-                        if dist < 20 then -- 20 studs range to steal
-                            pcall(function()
-                                -- This remote might need to be adjusted based on the game's actual remote event path
-                                local stealEvent = ReplicatedStorage.Packages.Net:FindFirstChild("RE/StealService/DeliverySteal")
-                                if stealEvent then
-                                    stealEvent:FireServer()
-                                else
-                                    warn("StealService remote not found!")
-                                end
-                            end)
-                        end
+local autoStealEnabled = false
+Tabs.Main:AddToggle("AutoStealToggle", {
+    Title = "Auto Steal",
+    Description = "Automatically teleports you to steal.",
+    Default = false,
+    Callback = function(Value)
+        autoStealEnabled = Value
+        if autoStealEnabled then
+            task.spawn(function()
+                while autoStealEnabled do
+                    local player = game.Players.LocalPlayer
+                    local pos = CFrame.new(0, -500, 0)
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = pos
                     end
+                    task.wait(0.1) -- Adjust as needed
                 end
-                -- Add more general stealing logic if applicable, e.g., for items
-                -- if plot:FindFirstChild("StealableItem") and (plot.StealableItem.Position - rootPart.Position).Magnitude < 15 then
-                --     pcall(function()
-                --         ReplicatedStorage.RemoteEvents.StealItem:FireServer(plot.StealableItem)
-                --     end)
-                -- end
-            end
-        end
-    end
-end
-task.spawn(autoStealLoop)
-
--- Auto Lock Base (keeps character at selected base)
-local function autoLockBaseLoop()
-    while true do
-        task.wait(1.5)
-        if autoLockBaseEnabled and selectedBase and character and rootPart then
-            local targetPos = selectedBase.DeliveryHitbox.Position + Vector3.new(0,5,0) -- 5 studs above hitbox
-            pcall(function()
-                rootPart.CFrame = CFrame.new(targetPos)
             end)
         end
     end
-end
-task.spawn(autoLockBaseLoop)
+})
 
--- Pet Finder
-local function updatePetHighlights()
-    for _, petModel in pairs(Workspace.Pets:GetChildren()) do
-        if petModel:IsA("Model") and petModel:FindFirstChild("HumanoidRootPart") then
-            -- Check if the pet's name is in the special pet list
-            local isSpecialPet = false
-            for _, specialName in pairs(petList) do
-                if string.find(petModel.Name, specialName, 1, true) then
-                    isSpecialPet = true
-                    break
+-- Auto Lock Base
+local autoLockBaseEnabled = false
+Tabs.Main:AddToggle("AutoLockBaseToggle", {
+    Title = "Auto Lock Base",
+    Description = "Automatically locks your base when possible.",
+    Default = false,
+    Callback = function(Value)
+        autoLockBaseEnabled = Value
+        if autoLockBaseEnabled then
+            task.spawn(function()
+                while autoLockBaseEnabled do
+                    local myPlot = workspace.Plots[plotName]
+                    if myPlot and myPlot.Purchases.PlotBlock.Main.BillboardGui.RemainingTime.Text == "0s" then
+                        -- Assuming there's a click detector or remote event to lock the base
+                        -- You'll need to replace this with the actual game's locking mechanism
+                        -- Example (this is a placeholder, you'll need to find the actual event/function):
+                        -- game:GetService("ReplicatedStorage").RemoteEvents.LockBase:FireServer(myPlot)
+                        Fluent:Notify({ Title = "Auto Lock Base", Content = "Attempting to lock base!", Duration = 1 })
+                        task.wait(1) -- Wait a bit before retrying
+                    end
+                    task.wait(0.5) -- Check every half second
                 end
-            end
-
-            if petFinderEnabled and isSpecialPet then
-                local highlight = petHighlights[petModel.Name]
-                if not highlight or not highlight.Parent then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "PetHighlight"
-                    highlight.Adornee = petModel
-                    highlight.FillColor = Color3.new(0, 1, 0) -- Green for pets
-                    highlight.OutlineColor = Color3.new(1, 1, 1)
-                    highlight.OutlineTransparency = 0.5
-                    highlight.Parent = petModel
-                    petHighlights[petModel.Name] = highlight
-                end
-            else
-                local highlight = petHighlights[petModel.Name]
-                if highlight and highlight.Parent then
-                    highlight:Destroy()
-                end
-                petHighlights[petModel.Name] = nil
-            end
-        else
-            -- Clean up if the pet model is no longer valid
-            local highlight = petHighlights[petModel.Name]
-            if highlight and highlight.Parent then
-                highlight:Destroy()
-            end
-            petHighlights[petModel.Name] = nil
+            end)
         end
     end
+})
 
-    -- Clean up highlights for pets that are no longer in Workspace.Pets (e.g., despawned)
-    for petName, highlight in pairs(petHighlights) do
-        if not Workspace.Pets:FindFirstChild(petName) then
-            if highlight and highlight.Parent then
-                highlight:Destroy()
-            end
-            petHighlights[petName] = nil
-        end
-    end
-end
 
--- Periodically update pet highlights
-RunService.Heartbeat:Connect(function()
-    if petFinderEnabled then
-        updatePetHighlights()
-    end
+local SpeedSlider = Tabs.Main:AddSlider("Slider", {
+    Title = "Speed Boost",
+    Default = 0,
+    Min = 0,
+    Max = 6,
+    Rounding = 1,
+})
+
+Tabs.Main:AddParagraph({
+    Title = "Use Speed Coil/Invisibility Cloak For Higher Speed",
+})
+
+local currentSpeed = 0
+SpeedSlider:OnChanged(function(Value)
+    currentSpeed = tonumber(Value) or 0
 end)
 
--- Server Hop
-local function initiateServerHop()
-    local PlaceId = game.PlaceId
-    local Servers = {}
-
-    local function getServers(cursor)
-        local success, result = pcall(function()
-            local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(PlaceId)
-            if cursor then
-                url = url .. "&cursor=" .. cursor
-            end
-            local response = HttpService:GetAsync(url) -- Use GetAsync for blocking call
-            return HttpService:JSONDecode(response)
-        end)
-        if not success then
-            warn("Failed to get servers:", result)
-            return nil
-        end
-        return result
-    end
-
-    -- Fluent notification for progress
-    local notify = Fluent:Notify({
-        Title = "Server Hop",
-        Content = "Searching for available servers...",
-        Duration = 9999, -- Indefinite until finished
-        Image = "rbxassetid://4483362458", -- Example image ID
-    })
-
+local function sSpeed(character)
+    local hum = character:WaitForChild("Humanoid")
+    local hb = game:GetService("RunService").Heartbeat
+    
     task.spawn(function()
-        local cursor = nil
-        local foundServers = false
-        while true do
-            local data = getServers(cursor)
-            if data and data.data then
-                for _, server in pairs(data.data) do
-                    -- Only consider servers that are not full and not the current server
-                    if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                        table.insert(Servers, server.id)
-                        foundServers = true
-                    end
-                end
-                cursor = data.nextPageCursor
-                if not cursor then break end
-            else
-                break
+        while character and hum and hum.Parent do
+            if currentSpeed > 0 and hum.MoveDirection.Magnitude > 0 then
+                character:TranslateBy(hum.MoveDirection * currentSpeed * hb:Wait() * 10)
             end
-            task.wait(0.5) -- Small wait to prevent API spam
-        end
-
-        if foundServers then
-            local serverToJoin = Servers[math.random(1, #Servers)]
-            TeleportService:TeleportToPlaceInstance(PlaceId, serverToJoin, localPlayer)
-            notify:Update({
-                Content = "Attempting to hop to a new server!",
-                Duration = 5,
-                Image = "rbxassetid://4483362458",
-            })
-        else
-            notify:Update({
-                Title = "Server Hop Failed",
-                Content = "No suitable servers found. Try again later.",
-                Duration = 5,
-                Image = "rbxassetid://4483362458",
-            })
-            warn("No available servers found for hopping.")
+            task.wait()
         end
     end)
 end
 
--- === Fluent UI Tabs and Components ===
-local MainTab = Window:AddTab("Main")
-local ESPTab = Window:AddTab("ESP")
-local PetFinderTab = Window:AddTab("Pet Finder")
-local MiscTab = Window:AddTab("Misc") -- For Noclip, Infinite Jump, Anti Ragdoll
-
--- Main Tab Section
-local MainSection = MainTab:AddSection("Main Features")
-
-MainSection:AddToggle("Auto Steal", autoStealEnabled):OnChanged(function(value)
-    autoStealEnabled = value
-end)
-
--- Collect base names for dropdown
-local baseNames = {}
-for _, base in pairs(Workspace.Plots:GetChildren()) do
-    if base:FindFirstChild("DeliveryHitbox") then
-        table.insert(baseNames, base.Name)
-    end
-end
-table.sort(baseNames)
-
-local baseDropdown = MainSection:AddDropdown("Select Base", baseNames, baseNames[1] or "No Bases Found"):OnChanged(function(option)
-    selectedBase = Workspace.Plots:FindFirstChild(option)
-end)
-
--- Initialize selectedBase on script load
-if #baseNames > 0 then
-    selectedBase = Workspace.Plots:FindFirstChild(baseNames[1])
+local function onCharacterAdded(character)
+    sSpeed(character)
 end
 
-MainSection:AddToggle("Auto Lock Base", autoLockBaseEnabled):OnChanged(function(value)
-    autoLockBaseEnabled = value
-end)
+player.CharacterAdded:Connect(onCharacterAdded)
 
-MainSection:AddButton("Teleport To Selected Base"):OnActivated(function()
-    if selectedBase and character and rootPart then
-        rootPart.CFrame = selectedBase.DeliveryHitbox.CFrame + Vector3.new(0,5,0)
-        Fluent:Notify({
-            Title = "Teleport",
-            Content = "Teleported to selected base!",
-            Duration = 3,
-            Image = "rbxassetid://4483362458",
-        })
-    else
-        Fluent:Notify({
-            Title = "Teleport Error",
-            Content = "No base selected or character not found.",
-            Duration = 3,
-            Image = "rbxassetid://4483362458",
-        })
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+
+
+Tabs.Main:AddButton({
+    Title = "Invisible",
+    Description = "Use Invisibility Cloak",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local cloak = character:FindFirstChild("Invisibility Cloak")
+        if cloak and cloak:GetAttribute("SpeedModifier") == 2 then
+            cloak.Parent = workspace
+        else
+            Fluent:Notify({ Title = "Stellar", Content = "Use Invisibility Cloak First", Duration = 2 })
+        end
     end
-end)
-
--- Fly Section
-local FlySection = MainTab:AddSection("Fly Controls")
-
-FlySection:AddToggle("Fly", flyEnabled):OnChanged(function(value)
-    flyEnabled = value
-    if value then
-        startFly()
-    else
-        stopFly()
-    end
-end)
-
-FlySection:AddSlider("Fly Speed", flySpeed, 10, 150, 1):OnChanged(function(value)
-    flySpeed = value
-end)
-
--- ESP Tab Section
-local ESPSec = ESPTab:AddSection("Player ESP")
-
-ESPSec:AddToggle("Toggle ESP", false):OnChanged(function(value)
-    -- ESP is automatically updated by the Heartbeat connection
-    updateAllESP() -- Trigger immediate update on toggle
-end)
-
-ESPSec:AddColorpicker("ESP Color", espColor):OnChanged(function(color)
-    espColor = color
-    updateAllESP() -- Apply new color to existing boxes
-end)
-
--- Pet Finder Tab Section
-local PetSec = PetFinderTab:AddSection("Pet Finder")
-
-PetSec:AddToggle("Pet Finder Highlight", petFinderEnabled):OnChanged(function(value)
-    petFinderEnabled = value
-    updatePetHighlights() -- Trigger immediate update on toggle
-end)
-
--- Misc Tab Section
-local MiscSec = MiscTab:AddSection("Miscellaneous")
-
-MiscSec:AddToggle("Noclip", noclipEnabled):OnChanged(function(value)
-    toggleNoclip(value)
-end)
-
-MiscSec:AddToggle("Infinite Jump", infiniteJumpEnabled):OnChanged(function(value)
-    infiniteJumpEnabled = value
-end)
-
-MiscSec:AddToggle("Anti Ragdoll", antiRagdollEnabled):OnChanged(function(value)
-    antiRagdollEnabled = value
-end)
-
--- Server Hop Tab Section
-local ServerHopSec = Window:AddTab("Server Hop"):AddSection("Server Hopping")
-
-ServerHopSec:AddButton("Server Hop (Find New Server)"):OnActivated(function()
-    initiateServerHop()
-end)
-
--- Final Polish and Cleanup
-Fluent:Notify({
-    Title = "Washedz Hub Loaded",
-    Content = "Welcome! Press Right Shift to toggle UI.",
-    Duration = 5,
-    Image = "rbxassetid://4483362458", -- Example image for notification
 })
 
--- Cleanup function to run when the script is disabled or game closes
-local function cleanup()
-    -- Disable all active features
-    autoStealEnabled = false
-    autoLockBaseEnabled = false
-    infiniteJumpEnabled = false
-    antiRagdollEnabled = false
-    petFinderEnabled = false
+-- Noclip
+local noclipEnabled = false
+Tabs.Main:AddToggle("NoclipToggle", {
+    Title = "Noclip",
+    Description = "Allows you to walk through walls.",
+    Default = false,
+    Callback = function(Value)
+        noclipEnabled = Value
+        local playerCharacter = player.Character
+        if playerCharacter then
+            for _, part in ipairs(playerCharacter:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = not noclipEnabled
+                end
+            end
+        end
+    end
+})
+player.CharacterAdded:Connect(function(character)
+    if noclipEnabled then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- Infinite Jump
+local infiniteJumpEnabled = false
+local oldJumpPower
+Tabs.Main:AddToggle("InfiniteJumpToggle", {
+    Title = "Infinite Jump",
+    Description = "Allows continuous jumping.",
+    Default = false,
+    Callback = function(Value)
+        infiniteJumpEnabled = Value
+        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if Value then
+                oldJumpPower = humanoid.JumpPower
+                humanoid.JumpPower = 0 -- Temporarily set to 0 to prevent initial jump
+                game:GetService("UserInputService").JumpRequest:Connect(function()
+                    if infiniteJumpEnabled then
+                        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                end)
+            else
+                if oldJumpPower then
+                    humanoid.JumpPower = oldJumpPower
+                end
+            end
+        end
+    end
+})
+
+-- Fly
+local flyEnabled = false
+local flySpeed = 10
+local flyConnection = nil
+Tabs.Main:AddToggle("FlyToggle", {
+    Title = "Fly",
+    Description = "Allows you to fly around.",
+    Default = false,
+    Callback = function(Value)
+        flyEnabled = Value
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local hrp = character.HumanoidRootPart
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.PlatformStand = flyEnabled
+            end
+
+            if flyEnabled then
+                flyConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                    local camera = workspace.CurrentCamera
+                    local moveDirection = Vector3.new()
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
+                        moveDirection = moveDirection + camera.CFrame.lookVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
+                        moveDirection = moveDirection - camera.CFrame.lookVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
+                        moveDirection = moveDirection - camera.CFrame.rightVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
+                        moveDirection = moveDirection + camera.CFrame.rightVector
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                        moveDirection = moveDirection + Vector3.new(0, 1, 0)
+                    end
+                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
+                        moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                    end
+
+                    if moveDirection.Magnitude > 0 then
+                        hrp.CFrame = hrp.CFrame + moveDirection.Unit * flySpeed
+                    end
+                end)
+            else
+                if flyConnection then
+                    flyConnection:Disconnect()
+                    flyConnection = nil
+                end
+                if humanoid then
+                    humanoid.PlatformStand = false
+                end
+            end
+        end
+    end
+})
+
+-- TP to Base
+Tabs.Main:AddButton({
+    Title = "TP to Base",
+    Description = "Teleports you to your plot's main block.",
+    Callback = function()
+        local myPlot = workspace.Plots[plotName]
+        if myPlot and myPlot.Purchases.PlotBlock.Main then
+            local targetPos = myPlot.Purchases.PlotBlock.Main.CFrame * CFrame.new(0, 5, 0) -- Teleport slightly above the block
+            local playerCharacter = player.Character
+            if playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart") then
+                playerCharacter.HumanoidRootPart.CFrame = targetPos
+                Fluent:Notify({ Title = "Teleport", Content = "Teleported to your base!", Duration = 2 })
+            end
+        else
+            Fluent:Notify({ Title = "Teleport", Content = "Could not find your base.", Duration = 2 })
+        end
+    end
+})
+
+-- Anti Ragdoll
+local antiRagdollEnabled = false
+Tabs.Main:AddToggle("AntiRagdollToggle", {
+    Title = "Anti Ragdoll",
+    Description = "Prevents your character from ragdolling.",
+    Default = false,
+    Callback = function(Value)
+        antiRagdollEnabled = Value
+        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if Value then
+                humanoid.BreakJointsOnDeath = false
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            else
+                humanoid.BreakJointsOnDeath = true
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            end
+        end
+    end
+})
+player.CharacterAdded:Connect(function(character)
+    if antiRagdollEnabled then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.BreakJointsOnDeath = false
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        end
+    end
+})
+
+
+-- ESP
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local espEnabled = false
+local espInstances = {}
+
+local function createESP(player)
+    if not espEnabled then return end
+    if player == Players.LocalPlayer then return end
     
-    stopFly() -- Clean up fly system
-    toggleNoclip(false) -- Disable noclip and restore collisions
-
-    -- Clean up ESP boxes
-    for _, box in pairs(espBoxes) do
-        if box and box.Parent then box:Destroy() end
+    local character = player.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
+    if not humanoidRootPart then return end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_" .. player.Name
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 200, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = humanoidRootPart
+    billboard.Parent = humanoidRootPart
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "NameLabel"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = player.DisplayName
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.Parent = billboard
+    
+    espInstances[player] = billboard
+    
+    local function onCharacterAdded(newCharacter)
+        if billboard then billboard:Destroy() end
+        
+        humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
+        if humanoidRootPart and espEnabled then
+            billboard.Adornee = humanoidRootPart
+            billboard.Parent = humanoidRootPart
+        end
     end
-    espBoxes = {}
-
-    -- Clean up pet highlights
-    for _, highlight in pairs(petHighlights) do
-        if highlight and highlight.Parent then highlight:Destroy() end
-    end
-    petHighlights = {}
-
-    -- Destroy custom PlayerInfoGui
-    if PlayerInfoGui and PlayerInfoGui.Parent then
-        PlayerInfoGui:Destroy()
-    end
-
-    -- Fluent UI handles its own cleanup when the script context is destroyed
-    -- or if you explicitly call Fluent:Destroy()
+    
+    player.CharacterAdded:Connect(onCharacterAdded)
 end
 
-game:BindToClose(cleanup)
+local function removeESP(player)
+    local espInstance = espInstances[player]
+    if espInstance then
+        espInstance:Destroy()
+        espInstances[player] = nil
+    end
+end
+
+local function toggleESP(enable)
+    espEnabled = enable
+    if enable then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer then
+                coroutine.wrap(function()
+                    createESP(player)
+                end)()
+            end
+        end
+    else
+        for player, espInstance in pairs(espInstances) do
+            if espInstance then
+                espInstance:Destroy()
+            end
+        end
+        espInstances = {}
+    end
+end
+
+local function initPlayerConnections()
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            if player ~= Players.LocalPlayer and espEnabled then
+                task.wait(1)
+                createESP(player)
+            end
+        end)
+    end)
+
+    Players.PlayerRemoving:Connect(removeESP)
+end
+
+initPlayerConnections()
+
+local RaritySettings = {
+    ["Legendary"] = {
+        Color = Color3.new(1, 1, 0),
+        Size = UDim2.new(0, 150, 0, 50)
+    },
+    ["Mythic"] = {
+        Color = Color3.new(1, 0, 0),
+        Size = UDim2.new(0, 150, 0, 50)
+    },
+    ["Brainrot God"] = {
+        Color = Color3.new(0.5, 0, 0.5),
+        Size = UDim2.new(0, 180, 0, 60)
+    },
+    ["Secret"] = {
+        Color = Color3.new(0, 0, 0),
+        Size = UDim2.new(0, 200, 0, 70)
+    }
+}
+
+local MutationSettings = {
+    ["Gold"] = {
+        Color = Color3.fromRGB(255, 215, 0),
+        Size = UDim2.new(0, 120, 0, 30)
+    },
+
+    ["Diamond"] = {
+        Color = Color3.fromRGB(0, 191, 255),
+        Size = UDim2.new(0, 120, 0, 30)
+    },
+
+    ["Rainbow"] = {
+        Color = Color3.fromRGB(255, 192, 203),
+        Size = UDim2.new(0, 120, 0, 30)
+    },
+
+    ["Bloodrot"] = {
+        Color = Color3.fromRGB(139, 0, 0),
+        Size = UDim2.new(0, 120, 0, 30)
+    }
+}
+
+local activeESP = {}
+local activeLockTimeEsp = false
+local lteInstances = {}
+
+local function updatelock()
+    if not activeLockTimeEsp then
+        for _, instance in pairs(lteInstances) do
+            if instance then
+                instance:Destroy()
+            end
+        end
+        lteInstances = {}
+        return
+    end
+
+    for _, plot in pairs(workspace.Plots:GetChildren()) do
+        local timeLabel = plot:FindFirstChild("Purchases", true) and 
+        plot.Purchases:FindFirstChild("PlotBlock", true) and
+        plot.Purchases.PlotBlock.Main:FindFirstChild("BillboardGui", true) and
+        plot.Purchases.PlotBlock.Main.BillboardGui:FindFirstChild("RemainingTime", true)
+        
+        if timeLabel and timeLabel:IsA("TextLabel") then
+            local espName = "LockTimeESP_" .. plot.Name
+            local existingBillboard = plot:FindFirstChild(espName)
+            
+            local isUnlocked = timeLabel.Text == "0s"
+            local displayText = isUnlocked and "Unlocked" or ("Lock: " .. timeLabel.Text)
+            
+            local textColor
+            if plot.Name == plotName then
+                textColor = isUnlocked and Color3.fromRGB(0, 255, 0)
+                            or Color3.fromRGB(0, 255, 0)
+            else
+                textColor = isUnlocked and Color3.fromRGB(220, 20, 60)
+                            or Color3.fromRGB(255, 255, 0)
+            end
+            
+            if not existingBillboard then
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = espName
+                billboard.Size = UDim2.new(0, 200, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 5, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Adornee = plot.Purchases.PlotBlock.Main
+                
+                local label = Instance.new("TextLabel")
+                label.Text = displayText
+                label.Size = UDim2.new(1, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.TextScaled = true
+                label.TextColor3 = textColor
+                label.TextStrokeColor3 = Color3.new(0, 0, 0)
+                label.TextStrokeTransparency = 0
+                label.Font = Enum.Font.SourceSansBold
+                label.Parent = billboard
+                
+                billboard.Parent = plot
+                lteInstances[plot.Name] = billboard
+            else
+                existingBillboard.TextLabel.Text = displayText
+                existingBillboard.TextLabel.TextColor3 = textColor
+            end
+        end
+    end
+end
+
+local function updateRESP()
+    for _, plot in pairs(workspace.Plots:GetChildren()) do
+        if plot.Name ~= plotName then
+            for _, child in pairs(plot:GetDescendants()) do
+                if child.Name == "Rarity" and child:IsA("TextLabel") and RaritySettings[child.Text] then
+                    local parentModel = child.Parent.Parent
+                    local espName = child.Text.."_ESP"
+                    local mutationEspName = "Mutation_ESP"
+                    local existingBillboard = parentModel:FindFirstChild(espName)
+                    local existingMutationBillboard = parentModel:FindFirstChild(mutationEspName)
+                    
+                    if activeESP[child.Text] then
+                        if not existingBillboard then
+                            local settings = RaritySettings[child.Text]
+                            
+                            local billboard = Instance.new("BillboardGui")
+                            billboard.Name = espName
+                            billboard.Size = settings.Size
+                            billboard.StudsOffset = Vector3.new(0, 3, 0)
+                            billboard.AlwaysOnTop = true
+                            
+                            local label = Instance.new("TextLabel")
+                            label.Text = child.Parent.DisplayName.Text
+                            label.Size = UDim2.new(1, 0, 1, 0)
+                            label.BackgroundTransparency = 1
+                            label.TextScaled = true
+                            label.TextColor3 = settings.Color
+                            label.TextStrokeColor3 = Color3.new(0, 0, 0)
+                            label.TextStrokeTransparency = 0
+                            label.Font = Enum.Font.SourceSansBold
+                            
+                            label.Parent = billboard
+                            billboard.Parent = parentModel
+                        end
+                        
+                        local mutation = child.Parent:FindFirstChild("Mutation")
+                        if mutation and mutation:IsA("TextLabel") and MutationSettings[mutation.Text] then
+                            local mutationSettings = MutationSettings[mutation.Text]
+                            
+                            if not existingMutationBillboard then
+                                local mutationBillboard = Instance.new("BillboardGui")
+                                mutationBillboard.Name = mutationEspName
+                                mutationBillboard.Size = mutationSettings.Size
+                                mutationBillboard.StudsOffset = Vector3.new(0, 6, 0)
+                                mutationBillboard.AlwaysOnTop = true
+                                
+                                local mutationLabel = Instance.new("TextLabel")
+                                mutationLabel.Text = mutation.Text
+                                mutationLabel.Size = UDim2.new(1, 0, 1, 0)
+                                mutationLabel.BackgroundTransparency = 1
+                                mutationLabel.TextScaled = true
+                                mutationLabel.TextColor3 = mutationSettings.Color
+                                mutationLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+                                mutationLabel.TextStrokeTransparency = 0
+                                mutationLabel.Font = Enum.Font.SourceSansBold
+                                
+                                mutationLabel.Parent = mutationBillboard
+                                mutationBillboard.Parent = parentModel
+                            else
+                                existingMutationBillboard.TextLabel.Text = mutation.Text
+                                existingMutationBillboard.TextLabel.TextColor3 = mutationSettings.Color
+                            end
+                        elseif existingMutationBillboard then
+                            existingMutationBillboard:Destroy()
+                        end
+                    else
+                        if existingBillboard then
+                            existingBillboard:Destroy()
+                        end
+                        if existingMutationBillboard then
+                            existingMutationBillboard:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local MultiDropdown = Tabs.Main:AddDropdown("MultiDropdown", {
+    Title = "Esp",
+    Values = {"Lock", "Players", "Legendary", "Mythic", "Brainrot God", "Secret",},
+    Multi = true,
+    Default = {},
+})
+
+MultiDropdown:OnChanged(function(Value)
+    if Value["Players"] then
+        toggleESP(true)
+    else
+        toggleESP(false)
+    end
+    activeESP["Legendary"] = Value["Legendary"] or false
+    activeESP["Mythic"] = Value["Mythic"] or false
+    activeESP["Brainrot God"] = Value["Brainrot God"] or false
+    activeESP["Secret"] = Value["Secret"] or false
+    
+    activeLockTimeEsp = Value["Lock"] or false
+    updatelock()
+    
+    updateRESP()
+    
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.25)
+        if activeLockTimeEsp then
+            updatelock()
+        end
+        if next(activeESP) ~= nil then
+            updateRESP()
+        end
+    end
+end)
+
+Tabs.Main:AddKeybind("Keybind", {
+    Title = "Steal Keybind",
+    Mode = "Toggle",
+    Default = "G",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local pos = CFrame.new(0, -500, 0)
+        local startT = os.clock()
+        while os.clock() - startT < 1 do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = pos
+            end
+            task.wait()
+        end
+    end,
+})
+
+Tabs.Main:AddKeybind("Keybind", {
+    Title = "Shop",
+    Mode = "Toggle",
+    Default = "F",
+    Description = "Opens/Closes shop",
+    Callback = function(Value)
+        shop.Visible = Value
+        shop.Position = Value and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0.5, 0, 1.5, 0)
+    end,
+})
+
+
+
+-- SERVER
+
+local petModels = game:GetService("ReplicatedStorage").Models.Animals:GetChildren()
+
+local petNames = {}
+for _, pet in ipairs(petModels) do
+    table.insert(petNames, pet.Name)
+end
+
+local MultiDropdown = Tabs.Server:AddDropdown("MultiDropdown", {
+    Title = "Pet Finder",
+    Values = petNames,
+    Multi = true,
+    Default = {},
+})
+
+local function getOwner(plot)
+    local text = plot:FindFirstChild("PlotSign") and 
+    plot.PlotSign:FindFirstChild("SurfaceGui") and 
+    plot.PlotSign.SurfaceGui.Frame.TextLabel.Text or "Unknown"
+    return text:match("^(.-)'s Base") or text
+end
+
+local myPlotName
+for _, plot in ipairs(workspace.Plots:GetChildren()) do
+    if plot:FindFirstChild("YourBase", true).Enabled then
+        myPlotName = plot.Name
+        break
+    end
+end
+
+local Rparagraph = Tabs.Server:AddParagraph({
+    Title = "No pets selected",
+})
+
+local SelectedPets = {}
+local isRunning = false
+local lnt = 0
+local nc = 5
+
+MultiDropdown:OnChanged(function(SelectedPetss)
+    SelectedPets = {}
+    for petName, isSelected in pairs(SelectedPetss) do
+        if isSelected then
+            table.insert(SelectedPets, petName)
+        end
+    end
+    
+    if not isRunning and #SelectedPets > 0 then
+        isRunning = true
+        task.spawn(function()
+            local lastResults = {}
+            
+            while #SelectedPets > 0 do
+                local counts = {}
+                local found = false
+                local newPetsFound = false
+                
+                for _, plot in pairs(workspace.Plots:GetChildren()) do
+                    if plot.Name ~= myPlotName then
+                        local owner = getOwner(plot)
+                        for _, v in pairs(plot:GetDescendants()) do
+                            if v.Name == "DisplayName" and table.find(SelectedPets, v.Text) then
+                                counts[owner] = counts[owner] or {}
+                                counts[owner][v.Text] = (counts[owner][v.Text] or 0) + 1
+                                found = true
+                                
+                                if not lastResults[owner] or not lastResults[owner][v.Text] then
+                                    newPetsFound = true
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if found then
+                    local resultText = ""
+                    for owner, pets in pairs(counts) do
+                        for name, count in pairs(pets) do
+                            resultText = resultText .. name.." x"..count.." | Owner: "..owner.."\n"
+                            
+                            if newPetsFound and (os.time() - lnt) > nc then
+                                Fluent:Notify({
+                                    Title = "Pet Finder",
+                                    Content = "Found "..name.." x"..count.." Owner: "..owner,
+                                    Duration = 2
+                                })
+                                lnt = os.time()
+                            end
+                        end
+                    end
+                    Rparagraph:SetTitle(resultText)
+                else
+                    Rparagraph:SetTitle("No selected pets found")
+                end
+                
+                lastResults = counts
+                task.wait(0.5)
+            end
+            
+            isRunning = false
+            Rparagraph:SetTitle("No pets selected")
+        end)
+    elseif #SelectedPets == 0 then
+        Rparagraph:SetTitle("No pets selected")
+    end
+end)
+
+
+Tabs.Server:AddSection("Other")
+
+
+Tabs.Server:AddButton({
+    Title = "Server Hop",
+    Description = "Joins a Different Server",
+    Callback = function()
+        local PlaceID = game.PlaceId
+        local AllIDs = {}
+        local foundAnything = ""
+        local actualHour = os.date("!*t").hour
+        local Deleted = false
+        local File = pcall(function()
+            AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
+        end)
+        if not File then
+            table.insert(AllIDs, actualHour)
+            writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+        end
+        function TPReturner()
+            local Site;
+            if foundAnything == "" then
+                Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
+            else
+                Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+            end
+            local ID = ""
+            if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+                foundAnything = Site.nextPageCursor
+            end
+            local num = 0;
+            for _,v in pairs(Site.data) do
+                local Possible = true
+                ID = tostring(v.id)
+                if tonumber(v.maxPlayers) > tonumber(v.playing) then
+                    for _,Existing in pairs(AllIDs) do
+                        if num ~= 0 then
+                            if ID == tostring(Existing) then
+                                Possible = false
+                                end
+                            else
+                                if tonumber(actualHour) ~= tonumber(Existing) then
+                                    local delFile = pcall(function()
+                                        delfile("NotSameServers.json")
+                                        AllIDs = {}
+                                        table.insert(AllIDs, actualHour)
+                                        end)
+                                    end
+                                end
+                            num = num + 1
+                        end
+                    if Possible == true then
+                        table.insert(AllIDs, ID)
+                        task.wait()
+                        pcall(function()
+                            writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+                            task.wait()
+                            game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
+                        end)
+                task.wait(4)
+            end
+        end
+    end
+end
+function Teleport()
+    while task.wait() do
+        pcall(function()
+            TPReturner()
+            if foundAnything ~= "" then
+                TPReturner()
+            end
+        end)
+    end
+end
+Teleport()
+    end
+})
+
+Tabs.Server:AddButton({
+    Title = "Rejoin",
+    Description = "Rejoins The Same Server",
+    Callback = function()
+        local ts = game:GetService("TeleportService")
+        local p = game:GetService("Players").LocalPlayer
+        ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, p)
+    end
+})
+
+
+local Timer = Tabs.Updates:AddParagraph({ Title = "Time: 00:00:00" })
+local st = os.time()
+
+task.spawn(function()
+    while true do
+        local et = os.difftime(os.time(), st)
+        Timer:SetTitle(string.format("Time: %02d:%02d:%02d", math.floor(et / 3600), math.floor((et % 3600) / 60), et % 60))
+        task.wait(1)
+    end
+end)
+
+Tabs.Updates:AddButton({
+    Title = "Discord Server",
+    Description = "Copies Discord Invite Link",
+    Callback = function()
+        setclipboard("WASHEDZ discord is not for u")
+        Fluent:Notify({ Title = "Stellar", Content = "Copied Successfully", Duration = 2 })
+    end
+})
+
+Tabs.Updates:AddButton({
+    Title = "Run Infinite Yield",
+    Callback = function()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+    end
+})
+
+game:GetService('Players').LocalPlayer.Idled:Connect(function()
+    game:GetService('VirtualUser'):CaptureController()
+    game:GetService('VirtualUser'):ClickButton2(Vector2.new())
+end)
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+SaveManager:SetLibrary(Fluent)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+
+Window:SelectTab(1)
