@@ -1,425 +1,939 @@
+-- Part 1/5: Setup, services, variables, Rayfield init & base UI
+
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
 
-local player = Players.LocalPlayer
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
 
--- ====== Loading Screen Setup =======
-local loadingGui = Instance.new("ScreenGui")
-loadingGui.Name = "LoadingGui"
-loadingGui.ResetOnSpawn = false
-loadingGui.IgnoreGuiInset = true
-loadingGui.Parent = game.CoreGui
+-- Rayfield Library Load
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/venixgg/Rayfield/main/source"))()
 
--- Background (black with snowfall)
-local bg = Instance.new("Frame", loadingGui)
-bg.Size = UDim2.new(1, 0, 1, 0)
-bg.BackgroundColor3 = Color3.new(0, 0, 0)
-bg.BackgroundTransparency = 0
+-- State Variables
+local autoStealEnabled = false
+local autoLockBaseEnabled = false
+local noclipEnabled = false
+local infiniteJumpEnabled = false
+local flyEnabled = false
+local antiRagdollEnabled = false
+local petFinderEnabled = false
 
--- Snowfall Particle Effect (full screen)
-local snowfall = Instance.new("ParticleEmitter")
-snowfall.Parent = bg
-snowfall.Texture = "rbxassetid://258128463" -- Snowflake texture
-snowfall.Rate = 50
-snowfall.Lifetime = NumberRange.new(10)
-snowfall.Speed = NumberRange.new(10, 15)
-snowfall.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1)})
-snowfall.Rotation = NumberRange.new(0, 360)
-snowfall.RotSpeed = NumberRange.new(-10, 10)
-snowfall.VelocitySpread = 20
-snowfall.EmissionDirection = Enum.NormalId.Top
-snowfall.LockedToPart = false
-snowfall.LightInfluence = 0
+local flySpeed = 16 -- default fly speed low for anti-cheat
+local selectedBase = nil
 
--- We parent particle emitter to a transparent part covering screen to emit over entire screen
-local snowPart = Instance.new("Part")
-snowPart.Size = Vector3.new(1000, 1, 1000)
-snowPart.Transparency = 1
-snowPart.Anchored = true
-snowPart.CanCollide = false
-snowPart.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0, 50, 0)
-snowPart.Parent = Workspace
-snowfall.Parent = snowPart
-
--- Animate snowPart to follow camera
-RunService.RenderStepped:Connect(function()
-	snowPart.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0, 50, 0)
-end)
-
--- Loading text
-local titleText = Instance.new("TextLabel", loadingGui)
-titleText.Size = UDim2.new(1, 0, 0, 70)
-titleText.Position = UDim2.new(0, 0, 0.1, 0)
-titleText.BackgroundTransparency = 1
-titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextScaled = true
-titleText.Font = Enum.Font.GothamBold
-titleText.Text = 'Welcome To "Nicuse HUB"'
-titleText.ZIndex = 10
-
--- Status Text
-local statusText = Instance.new("TextLabel", loadingGui)
-statusText.Size = UDim2.new(1, 0, 0, 30)
-statusText.Position = UDim2.new(0, 0, 0.9, 0)
-statusText.BackgroundTransparency = 1
-statusText.TextColor3 = Color3.fromRGB(255, 255, 255)
-statusText.TextScaled = true
-statusText.Font = Enum.Font.GothamBold
-statusText.Text = "Loading..."
-statusText.ZIndex = 10
-
--- Player avatar thumbnail
-local avatarImageLabel = Instance.new("ImageLabel", loadingGui)
-avatarImageLabel.Size = UDim2.new(0, 120, 0, 120)
-avatarImageLabel.Position = UDim2.new(0.5, -60, 0.4, 0)
-avatarImageLabel.BackgroundTransparency = 1
-avatarImageLabel.ScaleType = Enum.ScaleType.Fit
-avatarImageLabel.ZIndex = 10
-avatarImageLabel.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-
--- Get player headshot thumbnail
-local thumbType = Enum.ThumbnailType.HeadShot
-local thumbSize = Enum.ThumbnailSize.Size420x420
-
-local content, isReady = Players:GetUserThumbnailAsync(player.UserId, thumbType, thumbSize)
-if isReady then
-	avatarImageLabel.Image = content
-end
-
--- Player username label
-local usernameLabel = Instance.new("TextLabel", loadingGui)
-usernameLabel.Size = UDim2.new(0, 300, 0, 40)
-usernameLabel.Position = UDim2.new(0.5, -150, 0.65, 0)
-usernameLabel.BackgroundTransparency = 1
-usernameLabel.Text = player.DisplayName
-usernameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-usernameLabel.TextScaled = true
-usernameLabel.Font = Enum.Font.GothamBold
-usernameLabel.ZIndex = 10
-
--- Fade out loading screen after "loading"
-local function fadeOutLoading()
-	for i = 1, 20 do
-		loadingGui.BackgroundTransparency = i * 0.05
-		titleText.TextTransparency = i * 0.05
-		statusText.TextTransparency = i * 0.05
-		avatarImageLabel.ImageTransparency = i * 0.05
-		usernameLabel.TextTransparency = i * 0.05
-		task.wait(0.05)
-	end
-	loadingGui:Destroy()
-	snowPart:Destroy()
-end
-
--- ========== Load Rayfield UI ==========
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
-
-local Window = Rayfield:CreateWindow({
-	Name = "Nicuse HUB",
-	LoadingTitle = "Nicuse HUB",
-	LoadingSubtitle = "Loading interface...",
-	ConfigurationSaving = {
-		Enabled = true,
-		FolderName = "NicuseHub",
-		FileName = "Config"
-	},
-	Discord = { Enabled = false },
-	KeySystem = false,
-	Theme = "White"
-})
-
--- Update loading status
-local function updateStatus(text)
-	statusText.Text = text
-end
-
-updateStatus("Initializing UI...")
-
--- ===== Tabs =====
-
-local MainTab = Window:CreateTab("Main", 4483362458)
-local UtilityTab = Window:CreateTab("Utility 🛠️", 4483362458)
-local InfoTab = Window:CreateTab("Info", 4483362458)
-
--- ====== Variables =======
-local speedSlow, speedFast = 0, 0
-local flyActive = false
-local flyBodyPosition, flyBodyGyro = nil, nil
+-- ESP Variables
 local espEnabled = false
-local espSecretAndBrainrot = false
-local espBillboards = {}
-local playerBillboards = {}
-local playerLockTarget = nil
+local espColor = Color3.fromRGB(255, 0, 0) -- red
+local espBoxes = {}
 
--- ====== SPEED BOOST =======
-MainTab:CreateSlider({
-	Name = "Speed Boost (Slow)",
-	Range = {0, 6},
-	Increment = 0.1,
-	Suffix = "",
-	CurrentValue = 0,
-	Callback = function(value)
-		speedSlow = value
-	end,
-})
+-- Pet Finder list (example pets, add more as you like)
+local petList = {
+    "SecretPet1",
+    "SecretPet2",
+    "BrainrotGod",
+    "PetA",
+    "PetB"
+}
 
-MainTab:CreateSlider({
-	Name = "Speed Boost (Fast)",
-	Range = {0, 20},
-	Increment = 0.5,
-	Suffix = "",
-	CurrentValue = 0,
-	Callback = function(value)
-		speedFast = value
-	end,
-})
-
--- ====== FLY TOGGLE =======
-local function toggleFly()
-	if flyActive then
-		flyActive = false
-		if flyBodyPosition then flyBodyPosition:Destroy() flyBodyPosition = nil end
-		if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
-		RunService:UnbindFromRenderStep("FlyControl")
-	else
-		flyActive = true
-		local character = player.Character
-		if not character then return end
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
-
-		flyBodyPosition = Instance.new("BodyPosition", hrp)
-		flyBodyPosition.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-		flyBodyPosition.P = 1500
-		flyBodyPosition.Position = hrp.Position
-
-		flyBodyGyro = Instance.new("BodyGyro", hrp)
-		flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-		flyBodyGyro.P = 3000
-		flyBodyGyro.CFrame = hrp.CFrame
-
-		RunService:BindToRenderStep("FlyControl", Enum.RenderPriority.Character.Value, function()
-			if not flyActive then
-				RunService:UnbindFromRenderStep("FlyControl")
-				return
-			end
-			local camCF = workspace.CurrentCamera.CFrame
-			flyBodyPosition.Position = hrp.Position + camCF.LookVector * 15
-			flyBodyGyro.CFrame = camCF
-		end)
-	end
+-- Utility Functions
+local function getPlayerAvatarThumbnail(player)
+    local content, isReady = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size80x80)
+    return content
 end
 
-MainTab:CreateButton({
-	Name = "Toggle Fly",
-	Callback = toggleFly,
+-- Create Rayfield Window (white background, red accent)
+local Window = Rayfield:CreateWindow({
+    Name = "YourHubName",
+    LoadingTitle = "Welcome To YourHubName",
+    LoadingSubtitle = "Loading features...",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "YourHubNameConfig",
+        FileName = "UserConfig",
+    },
+    Discord = {
+        Enabled = false,
+    },
+    KeySystem = false, -- No key system
+    IntroEnabled = false,
+    SaveConfig = true,
+    Theme = {
+        Background = Color3.fromRGB(255,255,255),
+        Accent = Color3.fromRGB(255,0,0),
+        SectionBackground = Color3.fromRGB(245,245,245),
+        Toggle = Color3.fromRGB(255,0,0),
+        ToggleBackground = Color3.fromRGB(255,255,255),
+        TextBoxBackground = Color3.fromRGB(255,255,255),
+        TextColor = Color3.fromRGB(0,0,0),
+    }
 })
 
--- ====== SPEED MOVEMENT =======
-local function speedBoost()
-	local character = player.Character or player.CharacterAdded:Wait()
-	local hum = character:WaitForChild("Humanoid")
-	local hrp = character:WaitForChild("HumanoidRootPart")
+-- Create Tabs
+local MainTab = Window:CreateTab("Main")
+local ESPTab = Window:CreateTab("ESP")
+local MiscTab = Window:CreateTab("Misc")
+local PetFinderTab = Window:CreateTab("Pet Finder")
+local ServerHopTab = Window:CreateTab("Server Hop")
 
-	RunService:BindToRenderStep("SpeedBoost", Enum.RenderPriority.Character.Value, function()
-		if (speedSlow > 0 or speedFast > 0) and hum.MoveDirection.Magnitude > 0 then
-			local speed = speedFast > 0 and speedFast or speedSlow
-			-- Use velocity instead of CFrame change for less lag and anti-teleport detection
-			hum.WalkSpeed = 16 + speed -- default 16 is Roblox base walk speed
-		else
-			hum.WalkSpeed = 16
-		end
-	end)
-end
+-- Small Player Avatar and Name UI (bottom left)
+local ScreenGui = Instance.new("ScreenGui", localPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "PlayerInfoGui"
 
-if player.Character then speedBoost() end
-player.CharacterAdded:Connect(speedBoost)
+local AvatarFrame = Instance.new("Frame", ScreenGui)
+AvatarFrame.BackgroundTransparency = 0.2
+AvatarFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+AvatarFrame.BorderSizePixel = 1
+AvatarFrame.Position = UDim2.new(0, 10, 1, -100)
+AvatarFrame.Size = UDim2.new(0, 80, 0, 80)
+AvatarFrame.ZIndex = 10
 
--- ====== ESP FUNCTIONALITY =======
-local function createBillboard(parent, text, color)
-	local billboard = Instance.new("BillboardGui", parent)
-	billboard.Size = UDim2.new(0, 120, 0, 40)
-	billboard.Adornee = parent
-	billboard.AlwaysOnTop = true
-	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+local AvatarImage = Instance.new("ImageLabel", AvatarFrame)
+AvatarImage.Size = UDim2.new(1, 0, 1, 0)
+AvatarImage.Position = UDim2.new(0,0,0,0)
+AvatarImage.BackgroundTransparency = 1
+AvatarImage.Image = getPlayerAvatarThumbnail(localPlayer)
 
-	local label = Instance.new("TextLabel", billboard)
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.Text = text
-	label.TextColor3 = color
-	label.TextStrokeColor3 = Color3.new(0, 0, 0)
-	label.TextStrokeTransparency = 0
-	label.TextScaled = true
-	return billboard
-end
+local UsernameLabel = Instance.new("TextLabel", ScreenGui)
+UsernameLabel.Position = UDim2.new(0, 10, 1, -20)
+UsernameLabel.Size = UDim2.new(0, 80, 0, 20)
+UsernameLabel.BackgroundTransparency = 1
+UsernameLabel.TextColor3 = Color3.fromRGB(0,0,0)
+UsernameLabel.Font = Enum.Font.Gotham
+UsernameLabel.TextSize = 14
+UsernameLabel.Text = localPlayer.Name
+UsernameLabel.TextWrapped = true
+UsernameLabel.ZIndex = 10
 
-local function togglePlayerESP()
-	if espEnabled then
-		for _, billboard in pairs(playerBillboards) do
-			if billboard and billboard.Parent then
-				billboard:Destroy()
-			end
-		end
-		playerBillboards = {}
-		espEnabled = false
-	else
-		espEnabled = true
-		for _, plr in pairs(Players:GetPlayers()) do
-			if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-				local hrp = plr.Character.HumanoidRootPart
-				local billboard = createBillboard(hrp, plr.DisplayName, Color3.new(1, 0, 0))
-				table.insert(playerBillboards, billboard)
-			end
-		end
-	end
-end
-
-MainTab:CreateButton({
-	Name = "Toggle Player ESP (Names, Red)",
-	Callback = togglePlayerESP,
-})
-
--- ESP All Secret & Brainrot God Pets (simple toggle)
-local function toggleSecretBrainrotESP()
-	if espSecretAndBrainrot then
-		for _, billboard in pairs(espBillboards) do
-			if billboard and billboard.Parent then
-				billboard:Destroy()
-			end
-		end
-		espBillboards = {}
-		espSecretAndBrainrot = false
-	else
-		espSecretAndBrainrot = true
-		-- Search workspace for "Secret" or "Brainrot God" pets (using name includes)
-		for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
-			for _, obj in pairs(plot:GetDescendants()) do
-				if obj:IsA("TextLabel") and (string.find(obj.Text:lower(), "secret") or string.find(obj.Text:lower(), "brainrot god")) then
-					local adorneePart = obj.Parent
-					while adorneePart and not adorneePart:IsA("BasePart") do
-						adorneePart = adorneePart.Parent
-					end
-					if adorneePart then
-						local billboard = createBillboard(adorneePart, obj.Text, Color3.new(1, 0, 0))
-						table.insert(espBillboards, billboard)
-					end
-				end
-			end
-		end
-	end
-end
-
-MainTab:CreateButton({
-	Name = "Toggle Secret & Brainrot God ESP (Red)",
-	Callback = toggleSecretBrainrotESP,
-})
-
--- ====== SERVER HOP =======
-UtilityTab:CreateButton({
-	Name = "Server Hop",
-	Callback = function()
-		local PlaceID = game.PlaceId
-		local foundAnything = ""
-		local function TPToNewServer()
-			local servers
-			if foundAnything == "" then
-				servers = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-			else
-				servers = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-			end
-			if servers.nextPageCursor then
-				foundAnything = servers.nextPageCursor
-			end
-			for _, server in ipairs(servers.data) do
-				if server.playing < server.maxPlayers then
-					TeleportService:TeleportToPlaceInstance(PlaceID, server.id, player)
-					return
-				end
-			end
-		end
-		TPToNewServer()
-	end,
-})
-
--- ====== PET FINDER =======
-local petList = {}
-local success, result = pcall(function()
-	return game:GetService("ReplicatedStorage"):WaitForChild("Models"):WaitForChild("Animals"):GetChildren()
-end)
-if success then
-	for _, pet in ipairs(result) do
-		table.insert(petList, pet.Name)
-	end
-end
-
-UtilityTab:CreateDropdown({
-	Name = "🐾 Pet Finder",
-	Options = petList,
-	MultiSelection = true,
-	CurrentOption = {},
-	Callback = function(selectedPets)
-		coroutine.wrap(function()
-			while true do
-				task.wait(1.5)
-				local results = {}
-				for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
-					for _, obj in pairs(plot:GetDescendants()) do
-						if obj:IsA("TextLabel") and table.find(selectedPets, obj.Text) then
-							table.insert(results, obj.Text .. " at plot: " .. plot.Name)
-						end
-					end
-				end
-				if #results == 0 then
-					Rayfield:Notify({Title = "Pet Finder", Content = "No selected pets found!", Duration = 4, Image = 4483362458})
-				else
-					for _, res in pairs(results) do
-						Rayfield:Notify({Title = "Pet Finder", Content = res, Duration = 5, Image = 4483362458})
-					end
-				end
-			end
-		end)()
-	end,
-})
-
--- ====== ANTI-CHEAT BYPASS (Stealthy) =======
--- This example disables detection on HumanoidRootPart CFrame changes (very simple, more can be added)
-local lastCFrame = nil
-local antiTeleportEnabled = true
-
-RunService.Heartbeat:Connect(function()
-	if antiTeleportEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-		local hrp = player.Character.HumanoidRootPart
-		if lastCFrame then
-			local dist = (hrp.Position - lastCFrame.Position).Magnitude
-			if dist > 10 then -- big teleport detected
-				hrp.CFrame = lastCFrame
-			end
-		end
-		lastCFrame = hrp.CFrame
-	end
+-- Update avatar & name on respawn
+localPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    AvatarImage.Image = getPlayerAvatarThumbnail(localPlayer)
+    UsernameLabel.Text = localPlayer.Name
 end)
 
--- ====== Finish Loading =======
+-- Part 2/5: ESP, Auto Steal, Auto Lock Base, Noclip & Infinite Jump
+
+-- ======= ESP =======
+local function createESPBox(player)
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "ESPBox"
+    box.Adornee = nil
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Transparency = 0.5
+    box.Color3 = espColor
+    box.Size = Vector3.new(4, 6, 4) -- approx player size
+    box.Parent = game.CoreGui
+    return box
+end
+
+local function updateESP()
+    -- Clear old boxes
+    for _, box in pairs(espBoxes) do
+        if box and box.Parent then box:Destroy() end
+    end
+    espBoxes = {}
+
+    if not espEnabled then return end
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local box = createESPBox(plr.Character.HumanoidRootPart)
+            box.Adornee = plr.Character.HumanoidRootPart
+            table.insert(espBoxes, box)
+        end
+    end
+end
+
+-- Update ESP every 1 second
 task.spawn(function()
-	local steps = {
-		"Loading UI...",
-		"Setting up ESP...",
-		"Setting up Pet Finder...",
-		"Setting up Server Hop...",
-		"Finalizing..."
-	}
-	for _, step in ipairs(steps) do
-		updateStatus(step)
-		task.wait(1)
-	end
-	fadeOutLoading()
+    while true do
+        task.wait(1)
+        pcall(updateESP)
+    end
 end)
 
-print("Nicuse HUB loaded!")
+-- ======= Auto Steal =======
+local function autoSteal()
+    if not autoStealEnabled then return end
+    local plrChar = localPlayer.Character
+    if not plrChar or not plrChar:FindFirstChild("HumanoidRootPart") then return end
 
+    local hrp = plrChar.HumanoidRootPart
+    for _, plot in pairs(Workspace.Plots:GetChildren()) do
+        if plot:FindFirstChild("AnimalPodiums") then
+            for _, podium in pairs(plot.AnimalPodiums:GetChildren()) do
+                local dist = (podium:GetPivot().Position - hrp.Position).Magnitude
+                if dist < 20 then -- 20 studs range to steal
+                    pcall(function()
+                        ReplicatedStorage.Packages.Net["RE/StealService/DeliverySteal"]:FireServer()
+                    end)
+                end
+            end
+        end
+    end
+end
+
+-- Auto steal loop
+task.spawn(function()
+    while true do
+        task.wait(3) -- wait 3 seconds to reduce anticheat suspicion
+        if autoStealEnabled then
+            pcall(autoSteal)
+        end
+    end
+end)
+
+-- ======= Auto Lock Base =======
+local function autoLockBase()
+    if not autoLockBaseEnabled or not selectedBase then return end
+    local plrChar = localPlayer.Character
+    if not plrChar or not plrChar:FindFirstChild("HumanoidRootPart") then return end
+
+    -- Teleport to base (fly to base)
+    local targetPos = selectedBase.DeliveryHitbox.Position + Vector3.new(0,5,0)
+    pcall(function()
+        plrChar.HumanoidRootPart.CFrame = CFrame.new(targetPos)
+    end)
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1.5)
+        if autoLockBaseEnabled then
+            pcall(autoLockBase)
+        end
+    end
+end)
+
+-- ======= Noclip & Infinite Jump =======
+local function noclipToggle(state)
+    noclipEnabled = state
+    if noclipEnabled then
+        RunService.Stepped:Connect(function()
+            if noclipEnabled then
+                for _, part in pairs(localPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        -- Reset CanCollide when disabled
+        for _, part in pairs(localPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- Infinite Jump Handler
+local function onJumpRequest()
+    if infiniteJumpEnabled then
+        local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end
+
+UserInputService.JumpRequest:Connect(onJumpRequest)
+
+-- Disable noclip on respawn
+localPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    if noclipEnabled then noclipToggle(false) end
+end)
+
+-- ======= UI Toggles & Controls =======
+MainTab:CreateToggle({
+    Name = "Auto Steal",
+    CurrentValue = false,
+    Flag = "AutoStealToggle",
+    Callback = function(value)
+        autoStealEnabled = value
+    end,
+})
+
+MainTab:CreateToggle({
+    Name = "Auto Lock Base",
+    CurrentValue = false,
+    Flag = "AutoLockBaseToggle",
+    Callback = function(value)
+        autoLockBaseEnabled = value
+    end,
+})
+
+MainTab:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Flag = "NoclipToggle",
+    Callback = function(value)
+        noclipToggle(value)
+    end,
+})
+
+MainTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJumpToggle",
+    Callback = function(value)
+        infiniteJumpEnabled = value
+    end,
+})
+
+MainTab:CreateToggle({
+    Name = "Anti Ragdoll",
+    CurrentValue = false,
+    Flag = "AntiRagdollToggle",
+    Callback = function(value)
+        antiRagdollEnabled = value
+    end,
+})
+
+-- Base selection dropdown
+local baseNames = {}
+for _, base in pairs(Workspace.Plots:GetChildren()) do
+    if base:FindFirstChild("DeliveryHitbox") then
+        table.insert(baseNames, base.Name)
+    end
+end
+
+MainTab:CreateDropdown({
+    Name = "Select Base",
+    Options = baseNames,
+    CurrentOption = baseNames[1],
+    Flag = "BaseSelectDropdown",
+    Callback = function(option)
+        selectedBase = Workspace.Plots:FindFirstChild(option)
+    end,
+})
+
+-- Teleport To Base Button
+MainTab:CreateButton({
+    Name = "Teleport To Base",
+    Callback = function()
+        if selectedBase and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            localPlayer.Character.HumanoidRootPart.CFrame = selectedBase.DeliveryHitbox.CFrame + Vector3.new(0,5,0)
+        end
+    end,
+})
+
+-- Part 3/5: Fly, ESP UI, Pet Finder, Server Hop
+
+-- ======= Fly System =======
+local flySpeed = 50 -- default speed, adjustable by slider
+local flying = false
+local bodyVelocity = nil
+local bodyGyro = nil
+
+local function startFly()
+    if flying or not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    flying = true
+    local hrp = localPlayer.Character.HumanoidRootPart
+
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = hrp
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    bodyGyro.CFrame = hrp.CFrame
+    bodyGyro.Parent = hrp
+
+    local input = {W=false, A=false, S=false, D=false, Q=false, E=false}
+
+    local function updateFly()
+        if not flying then return end
+        local moveDirection = Vector3.new(0,0,0)
+        local camCF = workspace.CurrentCamera.CFrame
+
+        if input.W then
+            moveDirection = moveDirection + camCF.LookVector
+        end
+        if input.S then
+            moveDirection = moveDirection - camCF.LookVector
+        end
+        if input.A then
+            moveDirection = moveDirection - camCF.RightVector
+        end
+        if input.D then
+            moveDirection = moveDirection + camCF.RightVector
+        end
+        if input.Q then
+            moveDirection = moveDirection + Vector3.new(0,1,0)
+        end
+        if input.E then
+            moveDirection = moveDirection - Vector3.new(0,1,0)
+        end
+
+        bodyVelocity.Velocity = moveDirection.Unit * flySpeed
+        bodyGyro.CFrame = camCF
+    end
+
+    local connection1, connection2
+
+    connection1 = UserInputService.InputBegan:Connect(function(inputObj, gameProcessed)
+        if gameProcessed then return end
+        if inputObj.KeyCode == Enum.KeyCode.W then input.W = true end
+        if inputObj.KeyCode == Enum.KeyCode.A then input.A = true end
+        if inputObj.KeyCode == Enum.KeyCode.S then input.S = true end
+        if inputObj.KeyCode == Enum.KeyCode.D then input.D = true end
+        if inputObj.KeyCode == Enum.KeyCode.Q then input.Q = true end
+        if inputObj.KeyCode == Enum.KeyCode.E then input.E = true end
+        updateFly()
+    end)
+
+    connection2 = UserInputService.InputEnded:Connect(function(inputObj, gameProcessed)
+        if inputObj.KeyCode == Enum.KeyCode.W then input.W = false end
+        if inputObj.KeyCode == Enum.KeyCode.A then input.A = false end
+        if inputObj.KeyCode == Enum.KeyCode.S then input.S = false end
+        if inputObj.KeyCode == Enum.KeyCode.D then input.D = false end
+        if inputObj.KeyCode == Enum.KeyCode.Q then input.Q = false end
+        if inputObj.KeyCode == Enum.KeyCode.E then input.E = false end
+        updateFly()
+    end)
+
+    -- Fly update loop
+    spawn(function()
+        while flying do
+            updateFly()
+            task.wait()
+        end
+    end)
+
+    return function()
+        flying = false
+        if bodyVelocity then bodyVelocity:Destroy() end
+        if bodyGyro then bodyGyro:Destroy() end
+        connection1:Disconnect()
+        connection2:Disconnect()
+    end
+end
+
+local stopFlyFunc = nil
+
+MainTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(value)
+        if value then
+            stopFlyFunc = startFly()
+        else
+            if stopFlyFunc then stopFlyFunc() end
+        end
+    end,
+})
+
+MainTab:CreateSlider({
+    Name = "Fly Speed",
+    Min = 10,
+    Max = 150,
+    Default = 50,
+    Increment = 1,
+    Flag = "FlySpeedSlider",
+    Callback = function(value)
+        flySpeed = value
+    end,
+})
+
+-- ======= ESP Tab UI =======
+ESPTab:CreateToggle({
+    Name = "Toggle ESP",
+    CurrentValue = espEnabled,
+    Flag = "ESPToggle",
+    Callback = function(value)
+        espEnabled = value
+        updateESP()
+    end,
+})
+
+ESPTab:CreateColorPicker({
+    Name = "ESP Color",
+    Default = espColor,
+    Flag = "ESPColorPicker",
+    Callback = function(color)
+        espColor = color
+        updateESP()
+    end,
+})
+
+-- ======= Pet Finder =======
+local function findPets()
+    for _, pet in pairs(Workspace.Pets:GetChildren()) do
+        if pet:FindFirstChild("HumanoidRootPart") then
+            -- Highlight pet (could create a BillboardGui or Box)
+            -- Simple example: change color
+            if pet:FindFirstChildWhichIsA("BasePart") then
+                pet:FindFirstChildWhichIsA("BasePart").Color = Color3.fromRGB(0,255,0)
+            end
+        end
+    end
+end
+
+PetTab:CreateButton({
+    Name = "Find Pets",
+    Callback = function()
+        findPets()
+    end,
+})
+
+-- ======= Server Hop =======
+ServerTab:CreateButton({
+    Name = "Server Hop",
+    Callback = function()
+        local PlaceId = game.PlaceId
+        local TeleportService = game:GetService("TeleportService")
+        local HttpService = game:GetService("HttpService")
+        local Servers = {}
+
+        local function getServers(cursor)
+            local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(PlaceId)
+            if cursor then
+                url = url .. "&cursor=" .. cursor
+            end
+            local response = game:HttpGet(url)
+            return HttpService:JSONDecode(response)
+        end
+
+        spawn(function()
+            local cursor = nil
+            while true do
+                local data = getServers(cursor)
+                if data and data.data then
+                    for _, server in pairs(data.data) do
+                        if server.playing < server.maxPlayers then
+                            table.insert(Servers, server.id)
+                        end
+                    end
+                    cursor = data.nextPageCursor
+                    if not cursor then break end
+                else
+                    break
+                end
+            end
+            if #Servers > 0 then
+                local serverToJoin = Servers[math.random(1, #Servers)]
+                TeleportService:TeleportToPlaceInstance(PlaceId, serverToJoin, localPlayer)
+            else
+                warn("No available servers found.")
+            end
+        end)
+    end,
+})
+
+-- Part 4/5: Player avatar UI, Anti Ragdoll, Noclip, Infinite Jump, Teleport to Base
+
+-- ======= Player Avatar and Username UI =======
+local function createPlayerInfoUI()
+    local infoFrame = Rayfield:CreateWindow({
+        Name = "Player Info",
+        LoadingTitle = "Loading Player Data...",
+        LoadingSubtitle = "Please wait",
+        ConfigurationSaving = {
+            Enabled = false,
+        },
+        IntroEnabled = false,
+        IntroText = "",
+        IntroImage = "",
+        HidePremium = true,
+    })
+
+    local infoTab = infoFrame:CreateTab("Info")
+
+    local avatarUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. localPlayer.UserId .. "&width=80&height=80&format=png"
+    local avatarLabel = infoTab:CreateLabel("Avatar & Name")
+
+    local avatarImage = Instance.new("ImageLabel")
+    avatarImage.Size = UDim2.new(0, 80, 0, 80)
+    avatarImage.Position = UDim2.new(0, 10, 0, 10)
+    avatarImage.BackgroundTransparency = 1
+    avatarImage.Image = avatarUrl
+    avatarImage.Parent = infoTab.Content
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0, 150, 0, 20)
+    nameLabel.Position = UDim2.new(0, 100, 0, 35)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 18
+    nameLabel.Text = localPlayer.Name
+    nameLabel.Parent = infoTab.Content
+
+    -- Keep small, positioned bottom-left or bottom center of screen, adjust as needed
+    infoFrame:SetVisible(false)
+    return infoFrame
+end
+
+local playerInfoUI = createPlayerInfoUI()
+playerInfoUI:SetVisible(true)
+
+-- ======= Anti Ragdoll =======
+local antiragdoll = false
+MainTab:CreateToggle({
+    Name = "Anti Ragdoll",
+    CurrentValue = false,
+    Flag = "AntiRagdollToggle",
+    Callback = function(value)
+        antiragdoll = value
+    end,
+})
+
+game:GetService("RunService").Stepped:Connect(function()
+    if antiragdoll and localPlayer.Character then
+        local humanoid = localPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if humanoid:GetState() == Enum.HumanoidStateType.Ragdoll or humanoid:GetState() == Enum.HumanoidStateType.Physics then
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+        end
+    end
+end)
+
+-- ======= Noclip =======
+local noclipEnabled = false
+MainTab:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Flag = "NoclipToggle",
+    Callback = function(value)
+        noclipEnabled = value
+    end,
+})
+
+local function noclipLoop()
+    game:GetService("RunService").Stepped:Connect(function()
+        if noclipEnabled and localPlayer.Character then
+            for _, part in pairs(localPlayer.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        elseif localPlayer.Character then
+            for _, part in pairs(localPlayer.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end)
+end
+
+noclipLoop()
+
+-- Disable noclip on respawn to avoid detection
+localPlayer.CharacterAdded:Connect(function(character)
+    noclipEnabled = false
+end)
+
+-- ======= Infinite Jump =======
+local infiniteJumpEnabled = false
+MainTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJumpToggle",
+    Callback = function(value)
+        infiniteJumpEnabled = value
+    end,
+})
+
+UserInputService.JumpRequest:Connect(function()
+    if infiniteJumpEnabled then
+        if localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            localPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+-- ======= Teleport To Base =======
+local teleportToBaseEnabled = false
+MainTab:CreateToggle({
+    Name = "Teleport to Base",
+    CurrentValue = false,
+    Flag = "TeleportToBaseToggle",
+    Callback = function(value)
+        teleportToBaseEnabled = value
+    end,
+})
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if teleportToBaseEnabled and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local base = nil
+            for _, plot in pairs(workspace.Plots:GetChildren()) do
+                if plot:FindFirstChild("YourBase", true) and plot:FindFirstChild("YourBase", true).Enabled then
+                    base = plot:FindFirstChild("DeliveryHitbox")
+                end
+            end
+            if base then
+                local hrp = localPlayer.Character.HumanoidRootPart
+                hrp.CFrame = CFrame.new(base.Position.X, hrp.Position.Y, base.Position.Z)
+            end
+        end
+    end
+end)
+
+-- Part 5/5: Pet Finder, Server Hop, ESP, Auto Steal, Fly Speed slider, UI polish and cleanup
+
+-- ======= Pet Finder =======
+local petFinderEnabled = false
+MainTab:CreateToggle({
+    Name = "Pet Finder",
+    CurrentValue = false,
+    Flag = "PetFinderToggle",
+    Callback = function(value)
+        petFinderEnabled = value
+    end,
+})
+
+local function highlightPets()
+    for _, pet in pairs(workspace.Pets:GetChildren()) do
+        if pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
+            if petFinderEnabled then
+                if not pet:FindFirstChild("Highlight") then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "Highlight"
+                    hl.Adornee = pet
+                    hl.FillColor = Color3.new(1, 0, 0)
+                    hl.OutlineColor = Color3.new(1, 1, 1)
+                    hl.Parent = pet
+                end
+            else
+                local hl = pet:FindFirstChild("Highlight")
+                if hl then hl:Destroy() end
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(1) do
+        highlightPets()
+    end
+end)
+
+-- ======= Server Hop =======
+local serverHopEnabled = false
+MainTab:CreateToggle({
+    Name = "Server Hop",
+    CurrentValue = false,
+    Flag = "ServerHopToggle",
+    Callback = function(value)
+        serverHopEnabled = value
+        if serverHopEnabled then
+            -- Simple server hop by teleporting to same place
+            local TeleportService = game:GetService("TeleportService")
+            local PlaceId = game.PlaceId
+            TeleportService:Teleport(PlaceId, localPlayer)
+        end
+    end,
+})
+
+-- ======= ESP =======
+local espEnabled = false
+MainTab:CreateToggle({
+    Name = "ESP (All Except You)",
+    CurrentValue = false,
+    Flag = "ESPToggle",
+    Callback = function(value)
+        espEnabled = value
+        if espEnabled then
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player ~= localPlayer then
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        if not player.Character:FindFirstChild("ESPBox") then
+                            local box = Instance.new("BoxHandleAdornment")
+                            box.Name = "ESPBox"
+                            box.Adornee = player.Character.HumanoidRootPart
+                            box.AlwaysOnTop = true
+                            box.ZIndex = 10
+                            box.Size = Vector3.new(4, 6, 4)
+                            box.Transparency = 0.5
+                            box.Color3 = Color3.new(1, 0, 0)
+                            box.Parent = player.Character.HumanoidRootPart
+                        end
+                    end
+                end
+            end
+        else
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player.Character then
+                    local box = player.Character:FindFirstChild("ESPBox")
+                    if box then
+                        box:Destroy()
+                    end
+                end
+            end
+        end
+    end,
+})
+
+game.Players.PlayerAdded:Connect(function(player)
+    if espEnabled and player ~= localPlayer then
+        player.CharacterAdded:Connect(function(char)
+            task.wait(1)
+            if char:FindFirstChild("HumanoidRootPart") and not char:FindFirstChild("ESPBox") then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Name = "ESPBox"
+                box.Adornee = char.HumanoidRootPart
+                box.AlwaysOnTop = true
+                box.ZIndex = 10
+                box.Size = Vector3.new(4, 6, 4)
+                box.Transparency = 0.5
+                box.Color3 = Color3.new(1, 0, 0)
+                box.Parent = char.HumanoidRootPart
+            end
+        end)
+    end
+end)
+
+-- ======= Auto Steal =======
+local autoStealEnabled = false
+MainTab:CreateToggle({
+    Name = "Auto Steal",
+    CurrentValue = false,
+    Flag = "AutoStealToggle",
+    Callback = function(value)
+        autoStealEnabled = value
+    end,
+})
+
+-- Basic auto steal logic, steal pets from nearby bases after selecting a base
+task.spawn(function()
+    while task.wait(1) do
+        if autoStealEnabled and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            for _, plot in pairs(workspace.Plots:GetChildren()) do
+                if plot:FindFirstChild("YourBase", true) and plot:FindFirstChild("YourBase", true).Enabled then
+                    -- Steal from others (simple example)
+                    local stealEvent = game.ReplicatedStorage.Packages.Net:FindFirstChild("RE/StealService/DeliverySteal")
+                    if stealEvent then
+                        pcall(function()
+                            stealEvent:FireServer()
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ======= Fly Speed Slider =======
+local flySpeed = 16
+MainTab:CreateSlider({
+    Name = "Fly Speed",
+    Min = 10,
+    Max = 100,
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = flySpeed,
+    Flag = "FlySpeedSlider",
+    Callback = function(value)
+        flySpeed = value
+    end,
+})
+
+-- ======= Fly Feature =======
+local flying = false
+local flightBodyVelocity = nil
+local flightBodyGyro = nil
+
+local function startFly()
+    local character = localPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local hrp = character.HumanoidRootPart
+        flightBodyVelocity = Instance.new("BodyVelocity")
+        flightBodyVelocity.Velocity = Vector3.new(0,0,0)
+        flightBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        flightBodyVelocity.Parent = hrp
+
+        flightBodyGyro = Instance.new("BodyGyro")
+        flightBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+        flightBodyGyro.Parent = hrp
+    end
+end
+
+local function stopFly()
+    if flightBodyVelocity then
+        flightBodyVelocity:Destroy()
+        flightBodyVelocity = nil
+    end
+    if flightBodyGyro then
+        flightBodyGyro:Destroy()
+        flightBodyGyro = nil
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.E then
+            flying = not flying
+            if flying then
+                startFly()
+            else
+                stopFly()
+            end
+        end
+    end
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if flying and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = localPlayer.Character.HumanoidRootPart
+        local direction = Vector3.new()
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            direction = direction + workspace.CurrentCamera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            direction = direction - workspace.CurrentCamera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            direction = direction - workspace.CurrentCamera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            direction = direction + workspace.CurrentCamera.CFrame.RightVector
+        end
+        direction = Vector3.new(direction.X, 0, direction.Z).Unit * flySpeed
+        flightBodyVelocity.Velocity = direction + Vector3.new(0, 0, 0)
+        flightBodyGyro.CFrame = workspace.CurrentCamera.CFrame
+    end
+end)
+
+-- ======= UI Polish =======
+Rayfield:Notify({
+    Title = "Loaded",
+    Content = "Welcome to Hub Name!",
+    Duration = 5,
+    Image = 4483362458,
+})
+
+-- ======= Cleanup =======
+local function cleanup()
+    flying = false
+    stopFly()
+    espEnabled = false
+    petFinderEnabled = false
+    autoStealEnabled = false
+    serverHopEnabled = false
+    noclipEnabled = false
+    infiniteJumpEnabled = false
+    teleportToBaseEnabled = false
+    antiragdoll = false
+    playerInfoUI:SetVisible(false)
+end
+
+-- Call cleanup on unload if needed
+game:BindToClose(cleanup)
