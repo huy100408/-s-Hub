@@ -1,8 +1,12 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+
+
 local player = game:GetService("Players").LocalPlayer
 local shop = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("CoinsShop")
 
 local Window = Fluent:CreateWindow({
-    Title = "Nicuse Hub", -- Changed hub name here
+    Title = "Nicuse hub", -- Changed from game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. " 〢 washedz hub"
     SubTitle = "V2",
     TabWidth = 160,
     Size = UDim2.fromOffset(520, 400),
@@ -36,7 +40,8 @@ task.spawn(function()
     end
 end)
 
-Tabs.Main:AddButton({
+local stealActive = false
+local stealButton = Tabs.Main:AddButton({
     Title = "Steal",
     Description = "Spam if not working (teleports you to middle)",
     Callback = function()
@@ -52,56 +57,25 @@ Tabs.Main:AddButton({
     end
 })
 
--- Auto Steal
-local autoStealEnabled = false
-Tabs.Main:AddToggle("AutoStealToggle", {
+local autoStealToggle = Tabs.Main:AddToggle("AutoStealToggle", {
     Title = "Auto Steal",
-    Description = "Automatically teleports you to steal.",
     Default = false,
     Callback = function(Value)
-        autoStealEnabled = Value
-        if autoStealEnabled then
+        stealActive = Value
+        if Value then
             task.spawn(function()
-                while autoStealEnabled do
+                while stealActive do
                     local player = game.Players.LocalPlayer
                     local pos = CFrame.new(0, -500, 0)
                     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                         player.Character.HumanoidRootPart.CFrame = pos
                     end
-                    task.wait(0.1) -- Adjust as needed
+                    task.wait(0.1) -- Adjust delay as needed
                 end
             end)
         end
     end
 })
-
--- Auto Lock Base
-local autoLockBaseEnabled = false
-Tabs.Main:AddToggle("AutoLockBaseToggle", {
-    Title = "Auto Lock Base",
-    Description = "Automatically locks your base when possible.",
-    Default = false,
-    Callback = function(Value)
-        autoLockBaseEnabled = Value
-        if autoLockBaseEnabled then
-            task.spawn(function()
-                while autoLockBaseEnabled do
-                    local myPlot = workspace.Plots[plotName]
-                    if myPlot and myPlot.Purchases.PlotBlock.Main.BillboardGui.RemainingTime.Text == "0s" then
-                        -- Assuming there's a click detector or remote event to lock the base
-                        -- You'll need to replace this with the actual game's locking mechanism
-                        -- Example (this is a placeholder, you'll need to find the actual event/function):
-                        -- game:GetService("ReplicatedStorage").RemoteEvents.LockBase:FireServer(myPlot)
-                        Fluent:Notify({ Title = "Auto Lock Base", Content = "Attempting to lock base!", Duration = 1 })
-                        task.wait(1) -- Wait a bit before retrying
-                    end
-                    task.wait(0.5) -- Check every half second
-                end
-            end)
-        end
-    end
-})
-
 
 local SpeedSlider = Tabs.Main:AddSlider("Slider", {
     Title = "Speed Boost",
@@ -160,175 +134,225 @@ Tabs.Main:AddButton({
     end
 })
 
--- Noclip
+---
+## Movement Hacks
+---
+
 local noclipEnabled = false
-Tabs.Main:AddToggle("NoclipToggle", {
-    Title = "Noclip",
-    Description = "Allows you to walk through walls.",
-    Default = false,
-    Callback = function(Value)
-        noclipEnabled = Value
-        local playerCharacter = player.Character
-        if playerCharacter then
-            for _, part in ipairs(playerCharacter:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = not noclipEnabled
-                end
-            end
-        end
+local infiniteJumpEnabled = false
+local flyEnabled = false
+local flySpeed = 10 -- Default fly speed
+
+local noclipConnection
+local infiniteJumpConnection
+local flyConnection
+
+local function toggleNoclip(enable)
+    noclipEnabled = enable
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
     end
-})
-player.CharacterAdded:Connect(function(character)
-    if noclipEnabled then
-        for _, part in ipairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
+
+    if enable then
+        noclipConnection = game:GetService("Players").LocalPlayer.Character.ChildAdded:Connect(function(child)
+            if child:IsA("Part") and child.CanCollide then
+                child.CanCollide = false
+            end
+        end)
+        for _, part in ipairs(game:GetService("Players").LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("Part") and part.CanCollide then
                 part.CanCollide = false
             end
         end
+        Fluent:Notify({ Title = "Noclip", Content = "Noclip Enabled", Duration = 2 })
+    else
+        for _, part in ipairs(game:GetService("Players").LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("Part") and not part.CanCollide and part.Name ~= "HumanoidRootPart" then -- Re-enable collision for parts except HRP
+                part.CanCollide = true
+            end
+        end
+        Fluent:Notify({ Title = "Noclip", Content = "Noclip Disabled", Duration = 2 })
     end
-end)
+end
 
--- Infinite Jump
-local infiniteJumpEnabled = false
-local oldJumpPower
+local function toggleInfiniteJump(enable)
+    infiniteJumpEnabled = enable
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+    end
+
+    if enable then
+        infiniteJumpConnection = game:GetService("Players").LocalPlayer.Character.Humanoid.FreeFalling:Connect(function()
+            game:GetService("Players").LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
+        Fluent:Notify({ Title = "Infinite Jump", Content = "Infinite Jump Enabled", Duration = 2 })
+    else
+        Fluent:Notify({ Title = "Infinite Jump", Content = "Infinite Jump Disabled", Duration = 2 })
+    end
+end
+
+local function toggleFly(enable)
+    flyEnabled = enable
+    if flyConnection then
+        game:GetService("RunService").RenderStepped:Disconnect(flyConnection)
+        flyConnection = nil
+    end
+
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local character = localPlayer.Character
+    if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
+
+    if enable then
+        humanoid.PlatformStand = true
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+
+        flyConnection = game:GetService("RunService").RenderStepped:Connect(function()
+            local moveVector = localPlayer.MoveDirection
+            if moveVector.Magnitude > 0 then
+                rootPart.CFrame = rootPart.CFrame + (moveVector * flySpeed)
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                rootPart.CFrame = rootPart.CFrame + Vector3.new(0, flySpeed * 0.5, 0)
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
+                rootPart.CFrame = rootPart.CFrame - Vector3.new(0, flySpeed * 0.5, 0)
+            end
+        end)
+        Fluent:Notify({ Title = "Fly", Content = "Fly Enabled", Duration = 2 })
+    else
+        humanoid.PlatformStand = false
+        Fluent:Notify({ Title = "Fly", Content = "Fly Disabled", Duration = 2 })
+    end
+end
+
+
+Tabs.Main:AddToggle("NoclipToggle", {
+    Title = "Noclip",
+    Default = false,
+    Callback = toggleNoclip
+})
+
 Tabs.Main:AddToggle("InfiniteJumpToggle", {
     Title = "Infinite Jump",
-    Description = "Allows continuous jumping.",
     Default = false,
-    Callback = function(Value)
-        infiniteJumpEnabled = Value
-        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            if Value then
-                oldJumpPower = humanoid.JumpPower
-                humanoid.JumpPower = 0 -- Temporarily set to 0 to prevent initial jump
-                game:GetService("UserInputService").JumpRequest:Connect(function()
-                    if infiniteJumpEnabled then
-                        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                    end
-                end)
-            else
-                if oldJumpPower then
-                    humanoid.JumpPower = oldJumpPower
-                end
-            end
-        end
-    end
+    Callback = toggleInfiniteJump
 })
 
--- Fly
-local flyEnabled = false
-local flySpeed = 10
-local flyConnection = nil
 Tabs.Main:AddToggle("FlyToggle", {
     Title = "Fly",
-    Description = "Allows you to fly around.",
     Default = false,
+    Callback = toggleFly
+})
+
+Tabs.Main:AddSlider("FlySpeedSlider", {
+    Title = "Fly Speed",
+    Default = 10,
+    Min = 1,
+    Max = 50,
+    Rounding = 1,
     Callback = function(Value)
-        flyEnabled = Value
-        local character = player.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local hrp = character.HumanoidRootPart
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.PlatformStand = flyEnabled
-            end
+        flySpeed = Value
+    end
+})
 
-            if flyEnabled then
-                flyConnection = game:GetService("RunService").RenderStepped:Connect(function()
-                    local camera = workspace.CurrentCamera
-                    local moveDirection = Vector3.new()
-                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
-                        moveDirection = moveDirection + camera.CFrame.lookVector
-                    end
-                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
-                        moveDirection = moveDirection - camera.CFrame.lookVector
-                    end
-                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
-                        moveDirection = moveDirection - camera.CFrame.rightVector
-                    end
-                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
-                        moveDirection = moveDirection + camera.CFrame.rightVector
-                    end
-                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
-                        moveDirection = moveDirection + Vector3.new(0, 1, 0)
-                    end
-                    if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
-                        moveDirection = moveDirection - Vector3.new(0, 1, 0)
-                    end
+---
+## Base Management
+---
 
-                    if moveDirection.Magnitude > 0 then
-                        hrp.CFrame = hrp.CFrame + moveDirection.Unit * flySpeed
+local autoLockBaseEnabled = false
+local lockBaseButton = Tabs.Main:AddButton({
+    Title = "Auto Lock Base",
+    Description = "Automatically locks your base when unlocked",
+    Callback = function()
+        autoLockBaseEnabled = not autoLockBaseEnabled
+        if autoLockBaseEnabled then
+            lockBaseButton:SetTitle("Auto Lock Base (Active)")
+            Fluent:Notify({ Title = "Auto Lock Base", Content = "Auto Lock Base Enabled", Duration = 2 })
+            task.spawn(function()
+                while autoLockBaseEnabled do
+                    local yourPlot = workspace.Plots[plotName]
+                    if yourPlot and yourPlot.Purchases and yourPlot.Purchases.PlotBlock and yourPlot.Purchases.PlotBlock.Main and yourPlot.Purchases.PlotBlock.Main.BillboardGui and yourPlot.Purchases.PlotBlock.Main.BillboardGui.RemainingTime then
+                        local lockTimeText = yourPlot.Purchases.PlotBlock.Main.BillboardGui.RemainingTime.Text
+                        if lockTimeText == "0s" then
+                            -- This is where you'd call the game's actual "lock base" function.
+                            -- Since I don't have access to the game's internal functions,
+                            -- this is a placeholder. You'll need to replace this with the
+                            -- actual remote event/function call the game uses to lock a base.
+                            warn("Attempting to lock base (placeholder function call)")
+                            -- Example: game:GetService("ReplicatedStorage").RemoteEvents.LockBase:FireServer(plotName)
+                            task.wait(1) -- Wait a bit before checking again
+                        end
                     end
-                end)
-            else
-                if flyConnection then
-                    flyConnection:Disconnect()
-                    flyConnection = nil
+                    task.wait(5) -- Check every 5 seconds
                 end
-                if humanoid then
-                    humanoid.PlatformStand = false
-                end
-            end
+            end)
+        else
+            lockBaseButton:SetTitle("Auto Lock Base")
+            Fluent:Notify({ Title = "Auto Lock Base", Content = "Auto Lock Base Disabled", Duration = 2 })
         end
     end
 })
 
--- TP to Base
 Tabs.Main:AddButton({
-    Title = "TP to Base",
-    Description = "Teleports you to your plot's main block.",
+    Title = "Teleport to Base",
+    Description = "Teleports you to your plot's center",
     Callback = function()
-        local myPlot = workspace.Plots[plotName]
-        if myPlot and myPlot.Purchases.PlotBlock.Main then
-            local targetPos = myPlot.Purchases.PlotBlock.Main.CFrame * CFrame.new(0, 5, 0) -- Teleport slightly above the block
-            local playerCharacter = player.Character
-            if playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart") then
-                playerCharacter.HumanoidRootPart.CFrame = targetPos
+        local yourPlot = workspace.Plots[plotName]
+        if yourPlot and yourPlot.Purchases and yourPlot.Purchases.PlotBlock and yourPlot.Purchases.PlotBlock.Main then
+            local plotCenter = yourPlot.Purchases.PlotBlock.Main.CFrame.p
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                character.HumanoidRootPart.CFrame = CFrame.new(plotCenter + Vector3.new(0, 5, 0)) -- Teleport slightly above center
                 Fluent:Notify({ Title = "Teleport", Content = "Teleported to your base!", Duration = 2 })
             end
         else
-            Fluent:Notify({ Title = "Teleport", Content = "Could not find your base.", Duration = 2 })
+            Fluent:Notify({ Title = "Teleport", Content = "Could not find your base to teleport to.", Duration = 2 })
         end
     end
 })
 
--- Anti Ragdoll
+---
+## Combat and Utility
+---
+
 local antiRagdollEnabled = false
-Tabs.Main:AddToggle("AntiRagdollToggle", {
-    Title = "Anti Ragdoll",
-    Description = "Prevents your character from ragdolling.",
-    Default = false,
-    Callback = function(Value)
-        antiRagdollEnabled = Value
-        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            if Value then
-                humanoid.BreakJointsOnDeath = false
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-            else
-                humanoid.BreakJointsOnDeath = true
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
-                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-            end
-        end
-    end
-})
-player.CharacterAdded:Connect(function(character)
-    if antiRagdollEnabled then
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.BreakJointsOnDeath = false
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        end
-    end
-})
+local antiRagdollConnection
 
+local function toggleAntiRagdoll(enable)
+    antiRagdollEnabled = enable
+    if antiRagdollConnection then
+        antiRagdollConnection:Disconnect()
+        antiRagdollConnection = nil
+    end
+
+    if enable then
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            antiRagdollConnection = humanoid.FreeFalling:Connect(function()
+                if humanoid.Sit or humanoid.PlatformStand then return end -- Don't interfere if already sitting/platform standing
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end)
+            Fluent:Notify({ Title = "Anti-Ragdoll", Content = "Anti-Ragdoll Enabled", Duration = 2 })
+        else
+            Fluent:Notify({ Title = "Anti-Ragdoll", Content = "Humanoid not found, cannot enable.", Duration = 2 })
+        end
+    else
+        Fluent:Notify({ Title = "Anti-Ragdoll", Content = "Anti-Ragdoll Disabled", Duration = 2 })
+    end
+end
+
+Tabs.Main:AddToggle("AntiRagdollToggle", {
+    Title = "Anti-Ragdoll",
+    Default = false,
+    Callback = toggleAntiRagdoll
+})
 
 -- ESP
-
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -633,7 +657,7 @@ MultiDropdown:OnChanged(function(Value)
     
     updateRESP()
     
-end)
+})
 
 task.spawn(function()
     while true do
@@ -647,7 +671,7 @@ task.spawn(function()
     end
 end)
 
-Tabs.Main:AddKeybind("Keybind", {
+Tabs.Main:AddKeybind("StealKeybind", {
     Title = "Steal Keybind",
     Mode = "Toggle",
     Default = "G",
@@ -664,7 +688,7 @@ Tabs.Main:AddKeybind("Keybind", {
     end,
 })
 
-Tabs.Main:AddKeybind("Keybind", {
+Tabs.Main:AddKeybind("ShopKeybind", {
     Title = "Shop",
     Mode = "Toggle",
     Default = "F",
@@ -686,7 +710,7 @@ for _, pet in ipairs(petModels) do
     table.insert(petNames, pet.Name)
 end
 
-local MultiDropdown = Tabs.Server:AddDropdown("MultiDropdown", {
+local MultiDropdown = Tabs.Server:AddDropdown("PetFinderDropdown", {
     Title = "Pet Finder",
     Values = petNames,
     Multi = true,
