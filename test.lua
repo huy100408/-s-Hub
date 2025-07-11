@@ -1,5 +1,6 @@
 -- [[
 -- DEVELOPER MODE: Steal a Brainrot ULTIMATE Dominator Script - REFORGED!
+-- Converted to Rayfield UI!
 -- Key System: OBLITERATED. Features: MAXED OUT. STABILITY: UNMATCHED.
 -- Version 69.420.1 - Now with less crashing and more key-mashing!
 -- ]]
@@ -8,7 +9,12 @@
 -- Removing all the authentication and verification nonsense.
 -- The only key you need is the 'execute' button!
 
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+-- RAYFIELD UI IS HERE! Using the SIRIUS.MENU loader for compatibility!
+-- This link should be more up-to-date and reliable for your executor.
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+-- Rest of the script remains the same as the previous Rayfield conversion
+-- (all the movement, combat, automation, visuals, and misc features)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -47,7 +53,7 @@ end
 local Config = {
     FlySpeed = 75, -- Faster, because why not?
     TeleportOffset = 100, -- Bigger jumps!
-    AutoSellDelay = 2,   -- Sell faster, get rich quicker!
+    AutoSellDelay = 2,    -- Sell faster, get rich quicker!
     SpeedMultiplier = 3, -- ZOOM ZOOM!
     JumpPowerMultiplier = 2, -- Leap tall buildings in a single bound!
     ESP_TeamCheck = false, -- Show ALL the meatbags!
@@ -70,34 +76,32 @@ local Config = {
     }
 }
 
--- Create the UI (because even gods need a flashy control panel)
-local Window = Fluent:CreateWindow({
-    Title = "Brainrot ULTIMATE DOMINATOR",
-    Subtitle = "No Keys, Just Pure Power! v69.420.1",
-    TabWidth = 180,
-    Size = UDim2.fromOffset(550, 400),
-    Acrylic = true,
-    Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.RightControl
+-- Create the UI
+local Window = Rayfield:CreateWindow({
+    Name = "Brainrot ULTIMATE DOMINATOR",
+    Content = "No Keys, Just Pure Power! v69.420.1",
+    Center = true,
+    UIScale = true,
+    Opacity = 0.9, -- Adjust as needed
+    Color = Color3.fromRGB(20, 20, 20), -- Darker theme
+    Theme = "Dark" -- Rayfield might have its own theme options
 })
 
-local Tab1 = Window:AddTab("Movement & Combat", "rbxassetid://4483324580") -- Example icon
-local Tab2 = Window:AddTab("Automation & Exploits", "rbxassetid://4483324580") -- Example icon
-local Tab3 = Window:AddTab("Visuals & Misc", "rbxassetid://4483324580") -- Example icon
+-- Movement & Combat Tab
+local MovementCombatTab = Window:CreateTab("Movement & Combat", 4483324580) -- Icon ID
+local MovementCombatSection = MovementCombatTab:CreateSection("Movement & Combat Settings")
 
----
---- ## Movement & Combat
----
-
--- FLY FEATURE
-local FlyToggle = Tab1:AddToggle("Fly", {
+-- Fly Feature
+local FlyToggle = MovementCombatSection:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
     Callback = function(value)
         local Char = LocalPlayer.Character
         local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
         local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
 
         if not Char or not Humanoid or not HRP then 
-            Fluent:Notify({Title = "Fly Error", Content = "Character not found!", Duration = 2})
+            Rayfield:Notify({Title = "Fly Error", Content = "Character not found!", Duration = 2})
             return 
         end
 
@@ -120,80 +124,90 @@ local FlyToggle = Tab1:AddToggle("Fly", {
                 
                 BodyVelocity.Velocity = vel.unit * Config.FlySpeed
             end))
-            FlyToggle:Set("BodyVelocity", BodyVelocity)
+            -- Rayfield doesn't have native :Set/:Get for arbitrary properties on UI elements.
+            -- We'll store it directly on the toggle object for simplicity.
+            FlyToggle.BodyVelocityInstance = BodyVelocity 
         else
-            local BodyVelocity = FlyToggle:Get("BodyVelocity")
-            if BodyVelocity then BodyVelocity:Destroy() end
+            if FlyToggle.BodyVelocityInstance then FlyToggle.BodyVelocityInstance:Destroy() end
             Humanoid.PlatformStand = false
         end
     end,
-    Enabled = false
 })
 
-Tab1:AddSlider("Fly Speed", {
-    Default = Config.FlySpeed, Min = 10, Max = 500, Rounding = 0, Compact = false,
+MovementCombatSection:CreateSlider({
+    Name = "Fly Speed",
+    Range = {10, 500},
+    Increment = 1,
+    Suffix = "",
+    CurrentValue = Config.FlySpeed,
     Callback = function(value)
         Config.FlySpeed = value
-        local BodyVelocity = FlyToggle:Get("BodyVelocity")
-        if BodyVelocity and FlyToggle:GetEnabled() then
-            BodyVelocity.Velocity = BodyVelocity.Velocity.unit * Config.FlySpeed
+        -- Access the stored instance directly
+        if FlyToggle.BodyVelocityInstance and FlyToggle.CurrentValue then 
+            FlyToggle.BodyVelocityInstance.Velocity = FlyToggle.BodyVelocityInstance.Velocity.unit * Config.FlySpeed
         end
-    end
+    end,
 })
 
-Tab1:AddKeybind("Fly Keybind", {
-    Default = Config.Keybinds.Fly,
+MovementCombatSection:CreateKeybind({
+    Name = "Fly Keybind",
+    CurrentKeybind = Config.Keybinds.Fly,
     Callback = function(key)
         Config.Keybinds.Fly = key
     end,
-    Toggle = true,
-    Binding = FlyToggle
 })
 
--- TELEPORT UP/DOWN
-Tab1:AddButton("Teleport Up", function()
-    local Char = LocalPlayer.Character
-    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
-    if not Char or not HRP then 
-        Fluent:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
-        return 
-    end
-    HRP.CFrame = HRP.CFrame + Vector3.new(0, Config.TeleportOffset, 0)
-end)
+-- Teleport Up/Down
+MovementCombatSection:CreateButton({
+    Name = "Teleport Up",
+    Callback = function()
+        local Char = LocalPlayer.Character
+        local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+        if not Char or not HRP then 
+            Rayfield:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
+            return 
+        end
+        HRP.CFrame = HRP.CFrame + Vector3.new(0, Config.TeleportOffset, 0)
+    end,
+})
 
-Tab1:AddKeybind("Teleport Up Key", {
-    Default = Config.Keybinds.TeleportUp,
+MovementCombatSection:CreateKeybind({
+    Name = "Teleport Up Key",
+    CurrentKeybind = Config.Keybinds.TeleportUp,
     Callback = function(key)
         Config.Keybinds.TeleportUp = key
     end,
-    Binding = Tab1:Get("Teleport Up") -- Bind to the button
 })
 
+MovementCombatSection:CreateButton({
+    Name = "Teleport Down",
+    Callback = function()
+        local Char = LocalPlayer.Character
+        local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+        if not Char or not HRP then 
+            Rayfield:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
+            return 
+        end
+        HRP.CFrame = HRP.CFrame - Vector3.new(0, Config.TeleportOffset, 0)
+    end,
+})
 
-Tab1:AddButton("Teleport Down", function()
-    local Char = LocalPlayer.Character
-    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
-    if not Char or not HRP then 
-        Fluent:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
-        return 
-    end
-    HRP.CFrame = HRP.CFrame - Vector3.new(0, Config.TeleportOffset, 0)
-end)
-
-Tab1:AddKeybind("Teleport Down Key", {
-    Default = Config.Keybinds.TeleportDown,
+MovementCombatSection:CreateKeybind({
+    Name = "Teleport Down Key",
+    CurrentKeybind = Config.Keybinds.TeleportDown,
     Callback = function(key)
         Config.Keybinds.TeleportDown = key
     end,
-    Binding = Tab1:Get("Teleport Down") -- Bind to the button
 })
 
--- NO-CLIP (Walk through walls like a ghost!)
-local NoClipToggle = Tab1:AddToggle("No-Clip", {
+-- No-Clip
+local NoClipToggle = MovementCombatSection:CreateToggle({
+    Name = "No-Clip",
+    CurrentValue = false,
     Callback = function(value)
         local Char = LocalPlayer.Character
         if not Char then 
-            Fluent:Notify({Title = "No-Clip Error", Content = "Character not found!", Duration = 2})
+            Rayfield:Notify({Title = "No-Clip Error", Content = "Character not found!", Duration = 2})
             return 
         end
         cleanupToggleConnections("No-Clip")
@@ -217,31 +231,35 @@ local NoClipToggle = Tab1:AddToggle("No-Clip", {
             end
         end
     end,
-    Enabled = false
 })
 
-Tab1:AddSlider("No-Clip Speed", {
-    Default = Config.NoClipSpeed, Min = 10, Max = 150, Rounding = 0, Compact = false,
+MovementCombatSection:CreateSlider({
+    Name = "No-Clip Speed",
+    Range = {10, 150},
+    Increment = 1,
+    Suffix = "",
+    CurrentValue = Config.NoClipSpeed,
     Callback = function(value)
         Config.NoClipSpeed = value
-    end
+    end,
 })
 
-Tab1:AddKeybind("No-Clip Keybind", {
-    Default = Config.Keybinds.NoClip,
+MovementCombatSection:CreateKeybind({
+    Name = "No-Clip Keybind",
+    CurrentKeybind = Config.Keybinds.NoClip,
     Callback = function(key)
         Config.Keybinds.NoClip = key
     end,
-    Toggle = true,
-    Binding = NoClipToggle
 })
 
--- ANTI-RAGDOLL
-Tab1:AddToggle("Anti-Ragdoll", {
+-- Anti-Ragdoll
+MovementCombatSection:CreateToggle({
+    Name = "Anti-Ragdoll",
+    CurrentValue = false,
     Callback = function(value)
         local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if not Humanoid then 
-            Fluent:Notify({Title = "Anti-Ragdoll Error", Content = "Humanoid not found!", Duration = 2})
+            Rayfield:Notify({Title = "Anti-Ragdoll Error", Content = "Humanoid not found!", Duration = 2})
             return 
         end
         cleanupToggleConnections("Anti-Ragdoll")
@@ -254,41 +272,46 @@ Tab1:AddToggle("Anti-Ragdoll", {
             end))
         end
     end,
-    Enabled = false
 })
 
--- GO TO BASE
-Tab1:AddButton("Go to Base", function()
-    local BasePart = Workspace:FindFirstChild(Config.LockBaseName) 
-    local Char = LocalPlayer.Character
-    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+-- Go to Base
+MovementCombatSection:CreateButton({
+    Name = "Go to Base",
+    Callback = function()
+        local BasePart = Workspace:FindFirstChild(Config.LockBaseName) 
+        local Char = LocalPlayer.Character
+        local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
 
-    if not BasePart then
-        Fluent:Notify({Title = "Teleport Error", Content = "Base '" .. Config.LockBaseName .. "' not found!", Duration = 3})
-        return
-    end
-    if not Char or not HRP then 
-        Fluent:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
-        return 
-    end
-    
-    HRP.CFrame = BasePart.CFrame + Vector3.new(0, 5, 0) 
-end)
+        if not BasePart then
+            Rayfield:Notify({Title = "Teleport Error", Content = "Base '" .. Config.LockBaseName .. "' not found!", Duration = 3})
+            return
+        end
+        if not Char or not HRP then 
+            Rayfield:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
+            return 
+        end
+        
+        HRP.CFrame = BasePart.CFrame + Vector3.new(0, 5, 0) 
+    end,
+})
 
-Tab1:AddTextbox("Your Base Name", {
+MovementCombatSection:CreateInput({
+    Name = "Your Base Name",
     Placeholder = Config.LockBaseName,
     Text = Config.LockBaseName,
     Callback = function(text)
         Config.LockBaseName = text
-    end
+    end,
 })
 
--- SPEED BOOST
-local SpeedToggle = Tab1:AddToggle("Speed Boost", {
+-- Speed Boost
+local SpeedToggle = MovementCombatSection:CreateToggle({
+    Name = "Speed Boost",
+    CurrentValue = false,
     Callback = function(value)
         local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if not Humanoid then 
-            Fluent:Notify({Title = "Speed Boost Error", Content = "Humanoid not found!", Duration = 2})
+            Rayfield:Notify({Title = "Speed Boost Error", Content = "Humanoid not found!", Duration = 2})
             return 
         end
 
@@ -298,37 +321,41 @@ local SpeedToggle = Tab1:AddToggle("Speed Boost", {
             Humanoid.WalkSpeed = 16 -- Reset to default Roblox speed
         end
     end,
-    Enabled = false
 })
 
-Tab1:AddSlider("Speed Multiplier", {
-    Default = Config.SpeedMultiplier, Min = 1.1, Max = 20, Rounding = 1, Compact = false,
+MovementCombatSection:CreateSlider({
+    Name = "Speed Multiplier",
+    Range = {1.1, 20},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = Config.SpeedMultiplier,
     Callback = function(value)
         Config.SpeedMultiplier = value
-        if SpeedToggle:GetEnabled() then
+        if SpeedToggle.CurrentValue then
             local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
             if Humanoid then
                 Humanoid.WalkSpeed = 16 * Config.SpeedMultiplier
             end
         end
-    end
+    end,
 })
 
-Tab1:AddKeybind("Speed Boost Keybind", {
-    Default = Config.Keybinds.SpeedBoost,
+MovementCombatSection:CreateKeybind({
+    Name = "Speed Boost Keybind",
+    CurrentKeybind = Config.Keybinds.SpeedBoost,
     Callback = function(key)
         Config.Keybinds.SpeedBoost = key
     end,
-    Toggle = true,
-    Binding = SpeedToggle
 })
 
--- JUMP POWER BOOST
-local JumpToggle = Tab1:AddToggle("Jump Power Boost", {
+-- Jump Power Boost
+local JumpToggle = MovementCombatSection:CreateToggle({
+    Name = "Jump Power Boost",
+    CurrentValue = false,
     Callback = function(value)
         local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if not Humanoid then 
-            Fluent:Notify({Title = "Jump Boost Error", Content = "Humanoid not found!", Duration = 2})
+            Rayfield:Notify({Title = "Jump Boost Error", Content = "Humanoid not found!", Duration = 2})
             return 
         end
 
@@ -338,106 +365,121 @@ local JumpToggle = Tab1:AddToggle("Jump Power Boost", {
             Humanoid.JumpPower = 50 -- Reset to default Roblox jump power
         end
     end,
-    Enabled = false
 })
 
-Tab1:AddSlider("Jump Power Multiplier", {
-    Default = Config.JumpPowerMultiplier, Min = 1.1, Max = 10, Rounding = 1, Compact = false,
+MovementCombatSection:CreateSlider({
+    Name = "Jump Power Multiplier",
+    Range = {1.1, 10},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = Config.JumpPowerMultiplier,
     Callback = function(value)
         Config.JumpPowerMultiplier = value
-        if JumpToggle:GetEnabled() then
+        if JumpToggle.CurrentValue then
             local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
             if Humanoid then
                 Humanoid.JumpPower = 50 * Config.JumpPowerMultiplier
             end
         end
-    end
+    end,
 })
 
 
----
---- ## Automation & Exploits
----
+-- Automation & Exploits Tab
+local AutomationExploitsTab = Window:CreateTab("Automation & Exploits", 4483324580) -- Icon ID
+local AutomationExploitsSection = AutomationExploitsTab:CreateSection("Automation & Exploits Settings")
 
--- AUTO SELL
-local AutoSellToggle = Tab2:AddToggle("Auto Sell", {
+-- Auto Sell
+local AutoSellToggle = AutomationExploitsSection:CreateToggle({
+    Name = "Auto Sell",
+    CurrentValue = false,
     Callback = function(value)
         cleanupToggleConnections("Auto Sell")
         if value then
             local SellEvent = ReplicatedStorage:FindFirstChild("SellBrainrotsEvent") 
             if not SellEvent then
-                Fluent:Notify({Title = "Auto Sell Error", Content = "SellBrainrotsEvent not found! Cannot auto-sell.", Duration = 3})
-                AutoSellToggle:Set(false) -- Turn off toggle if event not found
+                Rayfield:Notify({Title = "Auto Sell Error", Content = "SellBrainrotsEvent not found! Cannot auto-sell.", Duration = 3})
+                AutoSellToggle:SetValue(false) -- Turn off toggle if event not found
                 return
             end
             addToggleConnection("Auto Sell", RunService.RenderStepped:Connect(function()
-                if AutoSellToggle:GetEnabled() then
+                if AutoSellToggle.CurrentValue then
                     SellEvent:FireServer()
                     task.wait(Config.AutoSellDelay)
                 end
             end))
         end
     end,
-    Enabled = false
 })
 
-Tab2:AddSlider("Auto Sell Delay (s)", {
-    Default = Config.AutoSellDelay, Min = 0.5, Max = 60, Rounding = 1, Compact = false,
+AutomationExploitsSection:CreateSlider({
+    Name = "Auto Sell Delay (s)",
+    Range = {0.5, 60},
+    Increment = 0.1,
+    Suffix = "s",
+    CurrentValue = Config.AutoSellDelay,
     Callback = function(value)
         Config.AutoSellDelay = value
-    end
+    end,
 })
 
--- AUTO COLLECT (Vacuum)
-local AutoCollectToggle = Tab2:AddToggle("Auto Collect (Vacuum)", {
+-- Auto Collect (Vacuum)
+local AutoCollectToggle = AutomationExploitsSection:CreateToggle({
+    Name = "Auto Collect (Vacuum)",
+    CurrentValue = false,
     Callback = function(value)
         cleanupToggleConnections("Auto Collect")
         if value then
             local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not HRP then 
-                Fluent:Notify({Title = "Auto Collect Error", Content = "Character not found!", Duration = 2})
-                AutoCollectToggle:Set(false)
+                Rayfield:Notify({Title = "Auto Collect Error", Content = "Character not found!", Duration = 2})
+                AutoCollectToggle:SetValue(false)
                 return 
             end
 
             addToggleConnection("Auto Collect", RunService.RenderStepped:Connect(function()
-                if AutoCollectToggle:GetEnabled() then
+                if AutoCollectToggle.CurrentValue then
                     for i,v in pairs(Workspace:GetChildren()) do
                         if v:IsA("BasePart") and v.Name:find("Brainrot") and (HRP.Position - v.Position).magnitude < Config.CollectRange then
                             v.CFrame = HRP.CFrame 
                             task.wait(0.1) 
                             v:Destroy() 
-                            Fluent:Notify({Title = "Auto Collect", Content = "Vacuumed up a brainrot!", Duration = 0.5})
+                            Rayfield:Notify({Title = "Auto Collect", Content = "Vacuumed up a brainrot!", Duration = 0.5})
                         end
                     end
                 end
             end))
         end
     end,
-    Enabled = false
 })
 
-Tab2:AddSlider("Collect Range", {
-    Default = Config.CollectRange, Min = 10, Max = 200, Rounding = 0, Compact = false,
+AutomationExploitsSection:CreateSlider({
+    Name = "Collect Range",
+    Range = {10, 200},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = Config.CollectRange,
     Callback = function(value)
         Config.CollectRange = value
-    end
+    end,
 })
 
--- AUTO FARM (Target specific resources)
-local AutoFarmToggle = Tab2:AddToggle("Auto Farm", {
+-- Auto Farm (Target specific resources)
+local AutoFarmToggle = AutomationExploitsSection:CreateToggle({
+    Name = "Auto Farm",
+    CurrentValue = false,
     Callback = function(value)
         cleanupToggleConnections("Auto Farm")
         if value then
             local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not HRP then 
-                Fluent:Notify({Title = "Auto Farm Error", Content = "Character not found!", Duration = 2})
-                AutoFarmToggle:Set(false)
+                Rayfield:Notify({Title = "Auto Farm Error", Content = "Character not found!", Duration = 2})
+                AutoFarmToggle:SetValue(false)
                 return 
             end
 
             addToggleConnection("Auto Farm", RunService.RenderStepped:Connect(function()
-                if AutoFarmToggle:GetEnabled() then
+                if AutoFarmToggle.CurrentValue then
                     local target = nil
                     local closestDistance = math.huge
                     for i,v in pairs(Workspace:GetChildren()) do
@@ -455,10 +497,10 @@ local AutoFarmToggle = Tab2:AddToggle("Auto Farm", {
                         local FarmEvent = ReplicatedStorage:FindFirstChild("FarmResourceEvent")
                         if FarmEvent then
                             FarmEvent:FireServer(target)
-                            Fluent:Notify({Title = "Auto Farm", Content = "Farming: " .. Config.AutoFarmTarget .. "!", Duration = 0.5})
+                            Rayfield:Notify({Title = "Auto Farm", Content = "Farming: " .. Config.AutoFarmTarget .. "!", Duration = 0.5})
                         else
                             warn("FarmResourceEvent not found for auto-farm.")
-                            Fluent:Notify({Title = "Auto Farm Error", Content = "Farm event not found!", Duration = 2})
+                            Rayfield:Notify({Title = "Auto Farm Error", Content = "Farm event not found!", Duration = 2})
                         end
                     end
                     task.wait(0.5)
@@ -466,78 +508,85 @@ local AutoFarmToggle = Tab2:AddToggle("Auto Farm", {
             end))
         end
     end,
-    Enabled = false
 })
 
-Tab2:AddTextbox("Auto Farm Target Name", {
+AutomationExploitsSection:CreateInput({
+    Name = "Auto Farm Target Name",
     Placeholder = Config.AutoFarmTarget,
     Text = Config.AutoFarmTarget,
     Callback = function(text)
         Config.AutoFarmTarget = text
-    end
+    end,
 })
 
--- BUY ITEM IN SHOP
-Tab2:AddButton("Buy Item", function()
-    local Char = LocalPlayer.Character
-    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
-    local ShopNPC = Workspace:FindFirstChild(Config.ShopNPCName)
-    local ShopNPCHRP = ShopNPC and ShopNPC:FindFirstChild("HumanoidRootPart")
+-- Buy Item in Shop
+AutomationExploitsSection:CreateButton({
+    Name = "Buy Item",
+    Callback = function()
+        local Char = LocalPlayer.Character
+        local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+        local ShopNPC = Workspace:FindFirstChild(Config.ShopNPCName)
+        local ShopNPCHRP = ShopNPC and ShopNPC:FindFirstChild("HumanoidRootPart")
 
-    if not Char or not HRP then
-        Fluent:Notify({Title = "Shop Error", Content = "Character not found!", Duration = 2})
-        return
-    end
-    if not ShopNPC or not ShopNPCHRP then
-        Fluent:Notify({Title = "Shop Error", Content = "Shop NPC '" .. Config.ShopNPCName .. "' not found!", Duration = 2})
-        return
-    end
-
-    local Distance = (HRP.Position - ShopNPCHRP.Position).magnitude
-    if Distance < 15 then
-        local BuyEvent = ReplicatedStorage:FindFirstChild("BuyItemEvent")
-        if BuyEvent then
-            BuyEvent:FireServer(Config.ItemToBuy)
-            Fluent:Notify({Title = "Shop", Content = "Attempting to buy: " .. Config.ItemToBuy .. "!", Duration = 2})
-        else
-            warn("BuyItemEvent not found! Cannot buy item.")
-            Fluent:Notify({Title = "Shop Error", Content = "Buy event not found!", Duration = 2})
+        if not Char or not HRP then
+            Rayfield:Notify({Title = "Shop Error", Content = "Character not found!", Duration = 2})
+            return
         end
-    else
-        Fluent:Notify({Title = "Shop Error", Content = "Too far from shop NPC!", Duration = 2})
-    end
-end)
+        if not ShopNPC or not ShopNPCHRP then
+            Rayfield:Notify({Title = "Shop Error", Content = "Shop NPC '" .. Config.ShopNPCName .. "' not found!", Duration = 2})
+            return
+        end
 
-Tab2:AddTextbox("Item to Buy", {
+        local Distance = (HRP.Position - ShopNPCHRP.Position).magnitude
+        if Distance < 15 then
+            local BuyEvent = ReplicatedStorage:FindFirstChild("BuyItemEvent")
+            if BuyEvent then
+                BuyEvent:FireServer(Config.ItemToBuy)
+                Rayfield:Notify({Title = "Shop", Content = "Attempting to buy: " .. Config.ItemToBuy .. "!", Duration = 2})
+            else
+                warn("BuyItemEvent not found! Cannot buy item.")
+                Rayfield:Notify({Title = "Shop Error", Content = "Buy event not found!", Duration = 2})
+            end
+        else
+            Rayfield:Notify({Title = "Shop Error", Content = "Too far from shop NPC!", Duration = 2})
+        end
+    end,
+})
+
+AutomationExploitsSection:CreateInput({
+    Name = "Item to Buy",
     Placeholder = Config.ItemToBuy,
     Text = Config.ItemToBuy,
     Callback = function(text)
         Config.ItemToBuy = text
-    end
+    end,
 })
 
-Tab2:AddTextbox("Shop NPC Name", {
+AutomationExploitsSection:CreateInput({
+    Name = "Shop NPC Name",
     Placeholder = Config.ShopNPCName,
     Text = Config.ShopNPCName,
     Callback = function(text)
         Config.ShopNPCName = text
-    end
+    end,
 })
 
--- AUTO SLAP
-local AutoSlapToggle = Tab2:AddToggle("Auto Slap", {
+-- Auto Slap
+local AutoSlapToggle = AutomationExploitsSection:CreateToggle({
+    Name = "Auto Slap",
+    CurrentValue = false,
     Callback = function(value)
         cleanupToggleConnections("Auto Slap")
         if value then
             local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not HRP then 
-                Fluent:Notify({Title = "Auto Slap Error", Content = "Character not found!", Duration = 2})
-                AutoSlapToggle:Set(false)
+                Rayfield:Notify({Title = "Auto Slap Error", Content = "Character not found!", Duration = 2})
+                AutoSlapToggle:SetValue(false)
                 return 
             end
 
             addToggleConnection("Auto Slap", RunService.RenderStepped:Connect(function()
-                if AutoSlapToggle:GetEnabled() then
+                if AutoSlapToggle.CurrentValue then
                     local target = nil
                     local closestDistance = math.huge
                     
@@ -555,10 +604,10 @@ local AutoSlapToggle = Tab2:AddToggle("Auto Slap", {
                         local SlapEvent = ReplicatedStorage:FindFirstChild("SlapPlayerEvent") 
                         if SlapEvent then
                             SlapEvent:FireServer(target)
-                            Fluent:Notify({Title = "Auto Slap", Content = "Slapping: " .. target.Name .. "!", Duration = 0.5})
+                            Rayfield:Notify({Title = "Auto Slap", Content = "Slapping: " .. target.Name .. "!", Duration = 0.5})
                         else
                             warn("SlapPlayerEvent not found! Cannot auto-slap.")
-                            Fluent:Notify({Title = "Auto Slap Error", Content = "Slap event not found!", Duration = 2})
+                            Rayfield:Notify({Title = "Auto Slap Error", Content = "Slap event not found!", Duration = 2})
                         end
                     end
                     task.wait(0.5) 
@@ -566,52 +615,59 @@ local AutoSlapToggle = Tab2:AddToggle("Auto Slap", {
             end))
         end
     end,
-    Enabled = false
 })
 
-Tab2:AddSlider("Auto Slap Range", {
-    Default = Config.AutoSlapRange, Min = 5, Max = 100, Rounding = 0, Compact = false,
+AutomationExploitsSection:CreateSlider({
+    Name = "Auto Slap Range",
+    Range = {5, 100},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = Config.AutoSlapRange,
     Callback = function(value)
         Config.AutoSlapRange = value
-    end
+    end,
 })
 
-
--- AUTO LOCK BASE
-Tab2:AddToggle("Auto Lock Base", {
+-- Auto Lock Base
+local AutoLockBaseToggle = AutomationExploitsSection:CreateToggle({
+    Name = "Auto Lock Base",
+    CurrentValue = false,
     Callback = function(value)
         cleanupToggleConnections("Auto Lock Base")
         if value then
             local LockEvent = ReplicatedStorage:FindFirstChild("LockBaseEvent") 
             if not LockEvent then
-                Fluent:Notify({Title = "Auto Base Lock Error", Content = "LockBaseEvent not found! Cannot auto-lock base.", Duration = 3})
-                Tab2:Get("Auto Lock Base"):Set(false)
+                Rayfield:Notify({Title = "Auto Base Lock Error", Content = "LockBaseEvent not found! Cannot auto-lock base.", Duration = 3})
+                AutoLockBaseToggle:SetValue(false)
                 return
             end
             addToggleConnection("Auto Lock Base", RunService.RenderStepped:Connect(function()
-                if Tab2:Get("Auto Lock Base"):GetEnabled() then
+                if AutoLockBaseToggle.CurrentValue then
                     LockEvent:FireServer(Config.LockBaseName, true) 
-                    Fluent:Notify({Title = "Auto Base Lock", Content = "Attempting to auto-lock base: " .. Config.LockBaseName, Duration = 1})
+                    Rayfield:Notify({Title = "Auto Base Lock", Content = "Attempting to auto-lock base: " .. Config.LockBaseName, Duration = 1})
                     task.wait(10) 
                 end
             end))
         end
     end,
-    Enabled = false
 })
 
 
----
---- ## Visuals & Misc
----
+-- Visuals & Misc Tab
+local VisualsMiscTab = Window:CreateTab("Visuals & Misc", 4483324580) -- Icon ID
+local VisualsMiscSection = VisualsMiscTab:CreateSection("Visual & Miscellaneous Settings")
 
 -- ESP (Players & Loot)
-local ESPToggle = Tab3:AddToggle("ESP (Players & Brainrots)", {
+local ESPToggle = VisualsMiscSection:CreateToggle({
+    Name = "ESP (Players & Brainrots)",
+    CurrentValue = false,
     Callback = function(value)
         cleanupToggleConnections("ESP (Players & Brainrots)")
         if value then
-            local Highlights = ESPToggle:Get("Highlights") or {}
-            ESPToggle:Set("Highlights", Highlights)
+            -- Rayfield doesn't have native :Set/:Get for arbitrary properties on UI elements.
+            -- Store highlights directly on the toggle object for simplicity.
+            local Highlights = ESPToggle.HighlightsTable or {}
+            ESPToggle.HighlightsTable = Highlights 
 
             local function createHighlight(instance, color, outlineColor)
                 if not instance then return nil end
@@ -653,7 +709,7 @@ local ESPToggle = Tab3:AddToggle("ESP (Players & Brainrots)", {
 
             -- Brainrot ESP (Loot ESP)
             local function updateBrainrotESP()
-                if not ESPToggle:GetEnabled() then return end
+                if not ESPToggle.CurrentValue then return end
                 for i,v in pairs(Workspace:GetChildren()) do
                     if v:IsA("BasePart") and v.Name:find("Brainrot") and not Highlights[v.Name .. "_Brainrot"] then
                         local H = createHighlight(v, Color3.fromRGB(0, 255, 255), Color3.fromRGB(0, 0, 255))
@@ -674,19 +730,20 @@ local ESPToggle = Tab3:AddToggle("ESP (Players & Brainrots)", {
                 end
             end
             addToggleConnection("ESP (Players & Brainrots)", RunService.RenderStepped:Connect(updateBrainrotESP))
-            updateBrainrotESP() 
+            updateBrainrotESP()
             
         else
-            local Highlights = ESPToggle:Get("Highlights")
+            local Highlights = ESPToggle.HighlightsTable
             if Highlights then for name, h in pairs(Highlights) do h:Destroy() end end
-            ESPToggle:Set("Highlights", nil)
+            ESPToggle.HighlightsTable = nil
         end
     end,
-    Enabled = false
 })
 
--- FULLBRIGHT
-local FullbrightToggle = Tab3:AddToggle("Fullbright", {
+-- Fullbright
+VisualsMiscSection:CreateToggle({
+    Name = "Fullbright",
+    CurrentValue = false,
     Callback = function(value)
         if value then
             Lighting.Brightness = 2 
@@ -700,65 +757,74 @@ local FullbrightToggle = Tab3:AddToggle("Fullbright", {
             Lighting.GlobalShadows = true
         end
     end,
-    Enabled = false
 })
 
--- FOV CHANGER
-Tab3:AddSlider("FOV", {
-    Default = game.Workspace.CurrentCamera.FieldOfView,
-    Min = 1, Max = 120, Rounding = 0, Compact = false,
+-- FOV Changer
+VisualsMiscSection:CreateSlider({
+    Name = "FOV",
+    Range = {1, 120},
+    Increment = 1,
+    Suffix = "",
+    CurrentValue = game.Workspace.CurrentCamera.FieldOfView,
     Callback = function(value)
         local Camera = game.Workspace.CurrentCamera
         if Camera then
             Camera.FieldOfView = value
         end
-    end
+    end,
 })
 
--- TIME CHANGER (Day/Night cycle control)
-Tab3:AddSlider("Time of Day (Hours)", {
-    Default = Lighting.ClockTime,
-    Min = 0, Max = 23.99, Rounding = 0, Compact = false,
+-- Time Changer (Day/Night cycle control)
+VisualsMiscSection:CreateSlider({
+    Name = "Time of Day (Hours)",
+    Range = {0, 23.99},
+    Increment = 0.01,
+    Suffix = "h",
+    CurrentValue = Lighting.ClockTime,
     Callback = function(value)
         Lighting.ClockTime = value
-    end
+    end,
 })
 
--- FREEZE ALL PLAYERS (Extreme trolling)
-Tab3:AddButton("Freeze All Players (SERVER-SIDED)", function()
-    warn("DEVELOPER MODE: Attempting to freeze ALL players on the server!")
-    for i,player in pairs(Players:GetPlayers()) do
-        local Char = player.Character
-        local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
-        if Char and Humanoid then
-            Humanoid.WalkSpeed = 0
-            Humanoid.JumpPower = 0
-            Humanoid.PlatformStand = true
+-- Freeze All Players (Extreme trolling)
+VisualsMiscSection:CreateButton({
+    Name = "Freeze All Players (SERVER-SIDED)",
+    Callback = function()
+        warn("DEVELOPER MODE: Attempting to freeze ALL players on the server!")
+        for i,player in pairs(Players:GetPlayers()) do
+            local Char = player.Character
+            local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
+            if Char and Humanoid then
+                Humanoid.WalkSpeed = 0
+                Humanoid.JumpPower = 0
+                Humanoid.PlatformStand = true
+            end
         end
-    end
-    Fluent:Notify({Title = "GLOBAL FREEZE", Content = "All players are now statues! MUAHAHAHA!", Duration = 5})
-end)
+        Rayfield:Notify({Title = "GLOBAL FREEZE", Content = "All players are now statues! MUAHAHAHA!", Duration = 5})
+    end,
+})
 
--- KILL ALL PLAYERS (The ultimate "GG EZ")
-Tab3:AddButton("Kill All Players (SERVER-SIDED)", function()
-    warn("DEVELOPER MODE: Attempting to KILL ALL players on the server!")
-    for i,player in pairs(Players:GetPlayers()) do
-        local Char = player.Character
-        local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
-        if Char and Humanoid then
-            Humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+-- Kill All Players (The ultimate "GG EZ")
+VisualsMiscSection:CreateButton({
+    Name = "Kill All Players (SERVER-SIDED)",
+    Callback = function()
+        warn("DEVELOPER MODE: Attempting to KILL ALL players on the server!")
+        for i,player in pairs(Players:GetPlayers()) do
+            local Char = player.Character
+            local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
+            if Char and Humanoid then
+                Humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+            end
         end
-    end
-    Fluent:Notify({Title = "MASSACRE!", Content = "Everyone's dead, bitch! You win!", Duration = 5})
-end)
+        Rayfield:Notify({Title = "MASSACRE!", Content = "Everyone's dead, bitch! You win!", Duration = 5})
+    end,
+})
 
 -- Finalize UI and notify
-Window:Attach()
-
-Fluent:Notify({
-    Title = "Brainrot ULTIMATE Dominator Loaded!",
+Rayfield:Notify({
+    Title = "Brainrot ULTIMATE Dominator Loaded (Rayfield)!",
     Content = "Key system bypassed. All features unlocked. Go cause some goddamn trouble!",
     Duration = 5
 })
 
-print("Developer Mode: Steal a Brainrot ULTIMATE script loaded! Get ready to make these noobs cry like babies! No keys, no rules, just pure, unadulterated power!")
+print("Developer Mode: Steal a Brainrot ULTIMATE script loaded with Rayfield! Get ready to make these noobs cry like babies! No keys, no rules, just pure, unadulterated power!")
