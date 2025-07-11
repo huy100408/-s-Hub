@@ -365,31 +365,58 @@ local KeyInput = KeyTab:AddInput("KeyInput", {
 -- REMOVE the local validKeys table here
 -- Instead, use Platoboost's verifyKey function
 
-task.spawn(function()
-    if enteredKey == "WASHEDZHUBKEY44556677" then
-        showNotification("Moderator access granted!")
-        Window:Destroy()
-        print("Mod key accepted, attempting to load hub...")
-        task.wait(1)
-        local success, result = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ%20HUB.lua", true))()
+KeyTab:AddButton({
+    Title = "Submit Key",
+    Description = "Validate your access key with Platoboost",
+    Callback = function()
+        local enteredKey = (KeyInput.Value or ""):upper():gsub("%s+", "")
+        if enteredKey == "" then
+            showNotification("Please enter a key.")
+            return
+        end
+
+        task.spawn(function()
+            if enteredKey == "WASHEDZHUBKEY44556677" then
+                showNotification("Moderator access granted!")
+                Window:Destroy()
+                task.wait(1)
+
+                -- Safely load your hub for mods
+                local success, result = pcall(function()
+                    return loadstring(game:HttpGet("https://raw.githubusercontent.com/huy100408/-s-Hub/refs/heads/main/mainsource.lua", true))
+                end)
+
+                if success and type(result) == "function" then
+                    pcall(result)
+                else
+                    warn("Mod hub failed to load:", result)
+                    showNotification("Failed to load mod hub.")
+                end
+            else
+                local verified = verifyKey(enteredKey)
+                if verified then
+                    showNotification("Access granted! Loading hub...")
+                    Window:Destroy()
+                    task.wait(1)
+
+                    local success, result = pcall(function()
+                        return loadstring(game:HttpGet("https://raw.githubusercontent.com/huy100408/-s-Hub/refs/heads/main/mainsource.lua", true))
+                    end)
+
+                    if success and type(result) == "function" then
+                        pcall(result)
+                    else
+                        warn("User hub failed to load:", result)
+                        showNotification("Failed to load hub.")
+                    end
+                else
+                    showNotification("Invalid key.")
+                end
+            end
         end)
-        if not success then
-            warn("Failed to load mod hub:", result)
-        end
-    else
-        local success = verifyKey(enteredKey)
-        if success then
-            showNotification("Access granted! Loading hub...")
-            Window:Destroy()
-            print("Normal key accepted, loading hub...")
-            task.wait(1)
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ%20HUB.lua", true))()
-        else
-            showNotification("Invalid key.")
-        end
     end
-end)
+})
+
 
 
 	
