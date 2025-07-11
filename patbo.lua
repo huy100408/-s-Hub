@@ -376,20 +376,28 @@ KeyTab:AddButton({
         end
 
         task.spawn(function()
-            local isModKey = (enteredKey == "WASHEDZHUBKEY44556677")  -- UPPERCASE to match input
-            local success = isModKey or verifyKey(enteredKey)
-
-            if success then
-                showNotification(isModKey and "Moderator access granted!" or "Access granted! Loading hub...")
+            if enteredKey == "WASHEDZHUBKEY44556677" then
+                -- Moderator key: no need to call Platoboost
+                showNotification("Moderator access granted!")
                 Window:Destroy()
                 task.wait(1)
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ HUB.lua", true))()
             else
-                showNotification("Invalid key.")
+                -- Only now call Platoboost
+                local success = verifyKey(enteredKey)
+                if success then
+                    showNotification("Access granted! Loading hub...")
+                    Window:Destroy()
+                    task.wait(1)
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ HUB.lua", true))()
+                else
+                    showNotification("Invalid key.")
+                end
             end
         end)
     end
 })
+
 
 	
 KeyTab:AddButton({
