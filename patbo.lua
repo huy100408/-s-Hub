@@ -365,38 +365,31 @@ local KeyInput = KeyTab:AddInput("KeyInput", {
 -- REMOVE the local validKeys table here
 -- Instead, use Platoboost's verifyKey function
 
-KeyTab:AddButton({
-    Title = "Submit Key",
-    Description = "Validate your access key with Platoboost",
-    Callback = function()
-        local enteredKey = (KeyInput.Value or ""):upper():gsub("%s+", "")
-        if enteredKey == "" then
-            showNotification("Please enter a key.")
-            return
-        end
-
-        task.spawn(function()
-            if enteredKey == "WASHEDZHUBKEY44556677" then
-                -- Moderator key: no need to call Platoboost
-                showNotification("Moderator access granted!")
-                Window:Destroy()
-                task.wait(1)
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ HUB.lua", true))()
-            else
-                -- Only now call Platoboost
-                local success = verifyKey(enteredKey)
-                if success then
-                    showNotification("Access granted! Loading hub...")
-                    Window:Destroy()
-                    task.wait(1)
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ HUB.lua", true))()
-                else
-                    showNotification("Invalid key.")
-                end
-            end
+task.spawn(function()
+    if enteredKey == "WASHEDZHUBKEY44556677" then
+        showNotification("Moderator access granted!")
+        Window:Destroy()
+        print("Mod key accepted, attempting to load hub...")
+        task.wait(1)
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ%20HUB.lua", true))()
         end)
+        if not success then
+            warn("Failed to load mod hub:", result)
+        end
+    else
+        local success = verifyKey(enteredKey)
+        if success then
+            showNotification("Access granted! Loading hub...")
+            Window:Destroy()
+            print("Normal key accepted, loading hub...")
+            task.wait(1)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ%20HUB.lua", true))()
+        else
+            showNotification("Invalid key.")
+        end
     end
-})
+end)
 
 
 	
