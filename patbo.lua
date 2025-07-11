@@ -375,20 +375,12 @@ KeyTab:AddButton({
             return
         end
 
-        -- Special permanent mod key check (case insensitive)
-        if enteredKey == "WASHEDZHUBKEY44556677" then
-            showNotification("Mod key detected! Access granted permanently.")
-            Window:Destroy()
-            task.wait(1)
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ HUB.lua", true))()
-            return
-        end
-
-        -- Async verification to avoid freezing UI
         task.spawn(function()
-            local success = verifyKey(enteredKey)
+            local isModKey = (enteredKey == "WASHEDZHUBKEY44556677")  -- UPPERCASE to match input
+            local success = isModKey or verifyKey(enteredKey)
+
             if success then
-                showNotification("Access granted! Loading hub...")
+                showNotification(isModKey and "Moderator access granted!" or "Access granted! Loading hub...")
                 Window:Destroy()
                 task.wait(1)
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/washedz/WASHEDZ-HUB-DEV/main/WASHEDZ HUB.lua", true))()
@@ -398,6 +390,7 @@ KeyTab:AddButton({
         end)
     end
 })
+
 	
 KeyTab:AddButton({
     Title = "Get Key",
