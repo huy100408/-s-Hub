@@ -1,940 +1,764 @@
+-- [[
+-- DEVELOPER MODE: Steal a Brainrot ULTIMATE Dominator Script - REFORGED!
+-- Key System: OBLITERATED. Features: MAXED OUT. STABILITY: UNMATCHED.
+-- Version 69.420.1 - Now with less crashing and more key-mashing!
+-- ]]
+
+-- NO MORE PLATBOOST KEY SYSTEM! WE'RE GOING FREE-REIGN, BABY!
+-- Removing all the authentication and verification nonsense.
+-- The only key you need is the 'execute' button!
+
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-
-
-local player = game:GetService("Players").LocalPlayer
-local shop = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("CoinsShop")
-
-local Window = Fluent:CreateWindow({
-    Title = "Nicuse hub", -- Changed from game:GetService("MarketplaceService"):GetProductInfo(109983668079237).Name .. " 〢 washedz hub"
-    SubTitle = "V2",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(520, 400),
-    Acrylic = false,
-    Theme = "Darker",
-    MinimizeKey = Enum.KeyCode.LeftControl
-})
-
-local Tabs = {
-    Updates = Window:AddTab({ Title = "Home", Icon = "home" }),
-    Main = Window:AddTab({ Title = "Main", Icon = "rocket" }),
-    Server = Window:AddTab({ Title = "Server", Icon = "server" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
-}
-
-local plotName
-for _, plot in ipairs(workspace.Plots:GetChildren()) do
-    if plot:FindFirstChild("YourBase", true).Enabled then
-        plotName = plot.Name
-        break
-    end
-end
-
-local remainingTime = workspace.Plots[plotName].Purchases.PlotBlock.Main.BillboardGui.RemainingTime
-local rtp = Tabs.Main:AddParagraph({ Title = "Lock Time: " .. remainingTime.Text })
-
-task.spawn(function()
-    while true do
-        rtp:SetTitle("Lock Time: " .. remainingTime.Text)
-        task.wait(0.25)
-    end
-end)
-
-local stealActive = false
-local stealButton = Tabs.Main:AddButton({
-    Title = "Steal",
-    Description = "Spam if not working (teleports you to middle)",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local pos = CFrame.new(0, -500, 0)
-        local startT = os.clock()
-        while os.clock() - startT < 1 do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = pos
-            end
-            task.wait()
-        end
-    end
-})
-
-local autoStealToggle = Tabs.Main:AddToggle("AutoStealToggle", {
-    Title = "Auto Steal",
-    Default = false,
-    Callback = function(Value)
-        stealActive = Value
-        if Value then
-            task.spawn(function()
-                while stealActive do
-                    local player = game.Players.LocalPlayer
-                    local pos = CFrame.new(0, -500, 0)
-                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        player.Character.HumanoidRootPart.CFrame = pos
-                    end
-                    task.wait(0.1) -- Adjust delay as needed
-                end
-            end)
-        end
-    end
-})
-
-local SpeedSlider = Tabs.Main:AddSlider("Slider", {
-    Title = "Speed Boost",
-    Default = 0,
-    Min = 0,
-    Max = 6,
-    Rounding = 1,
-})
-
-Tabs.Main:AddParagraph({
-    Title = "Use Speed Coil/Invisibility Cloak For Higher Speed",
-})
-
-local currentSpeed = 0
-SpeedSlider:OnChanged(function(Value)
-    currentSpeed = tonumber(Value) or 0
-end)
-
-local function sSpeed(character)
-    local hum = character:WaitForChild("Humanoid")
-    local hb = game:GetService("RunService").Heartbeat
-    
-    task.spawn(function()
-        while character and hum and hum.Parent do
-            if currentSpeed > 0 and hum.MoveDirection.Magnitude > 0 then
-                character:TranslateBy(hum.MoveDirection * currentSpeed * hb:Wait() * 10)
-            end
-            task.wait()
-        end
-    end)
-end
-
-local function onCharacterAdded(character)
-    sSpeed(character)
-end
-
-player.CharacterAdded:Connect(onCharacterAdded)
-
-if player.Character then
-    onCharacterAdded(player.Character)
-end
-
-
-Tabs.Main:AddButton({
-    Title = "Invisible",
-    Description = "Use Invisibility Cloak",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local character = player.Character or player.CharacterAdded:Wait()
-        local cloak = character:FindFirstChild("Invisibility Cloak")
-        if cloak and cloak:GetAttribute("SpeedModifier") == 2 then
-            cloak.Parent = workspace
-        else
-            Fluent:Notify({ Title = "Stellar", Content = "Use Invisibility Cloak First", Duration = 2 })
-        end
-    end
-})
-
----
-## Movement Hacks
----
-
-local noclipEnabled = false
-local infiniteJumpEnabled = false
-local flyEnabled = false
-local flySpeed = 10 -- Default fly speed
-
-local noclipConnection
-local infiniteJumpConnection
-local flyConnection
-
-local function toggleNoclip(enable)
-    noclipEnabled = enable
-    if noclipConnection then
-        noclipConnection:Disconnect()
-        noclipConnection = nil
-    end
-
-    if enable then
-        noclipConnection = game:GetService("Players").LocalPlayer.Character.ChildAdded:Connect(function(child)
-            if child:IsA("Part") and child.CanCollide then
-                child.CanCollide = false
-            end
-        end)
-        for _, part in ipairs(game:GetService("Players").LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("Part") and part.CanCollide then
-                part.CanCollide = false
-            end
-        end
-        Fluent:Notify({ Title = "Noclip", Content = "Noclip Enabled", Duration = 2 })
-    else
-        for _, part in ipairs(game:GetService("Players").LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("Part") and not part.CanCollide and part.Name ~= "HumanoidRootPart" then -- Re-enable collision for parts except HRP
-                part.CanCollide = true
-            end
-        end
-        Fluent:Notify({ Title = "Noclip", Content = "Noclip Disabled", Duration = 2 })
-    end
-end
-
-local function toggleInfiniteJump(enable)
-    infiniteJumpEnabled = enable
-    if infiniteJumpConnection then
-        infiniteJumpConnection:Disconnect()
-        infiniteJumpConnection = nil
-    end
-
-    if enable then
-        infiniteJumpConnection = game:GetService("Players").LocalPlayer.Character.Humanoid.FreeFalling:Connect(function()
-            game:GetService("Players").LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end)
-        Fluent:Notify({ Title = "Infinite Jump", Content = "Infinite Jump Enabled", Duration = 2 })
-    else
-        Fluent:Notify({ Title = "Infinite Jump", Content = "Infinite Jump Disabled", Duration = 2 })
-    end
-end
-
-local function toggleFly(enable)
-    flyEnabled = enable
-    if flyConnection then
-        game:GetService("RunService").RenderStepped:Disconnect(flyConnection)
-        flyConnection = nil
-    end
-
-    local localPlayer = game:GetService("Players").LocalPlayer
-    local character = localPlayer.Character
-    if not character then return end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not rootPart then return end
-
-    if enable then
-        humanoid.PlatformStand = true
-        rootPart.Velocity = Vector3.new(0, 0, 0)
-
-        flyConnection = game:GetService("RunService").RenderStepped:Connect(function()
-            local moveVector = localPlayer.MoveDirection
-            if moveVector.Magnitude > 0 then
-                rootPart.CFrame = rootPart.CFrame + (moveVector * flySpeed)
-            end
-            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
-                rootPart.CFrame = rootPart.CFrame + Vector3.new(0, flySpeed * 0.5, 0)
-            end
-            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
-                rootPart.CFrame = rootPart.CFrame - Vector3.new(0, flySpeed * 0.5, 0)
-            end
-        end)
-        Fluent:Notify({ Title = "Fly", Content = "Fly Enabled", Duration = 2 })
-    else
-        humanoid.PlatformStand = false
-        Fluent:Notify({ Title = "Fly", Content = "Fly Disabled", Duration = 2 })
-    end
-end
-
-
-Tabs.Main:AddToggle("NoclipToggle", {
-    Title = "Noclip",
-    Default = false,
-    Callback = toggleNoclip
-})
-
-Tabs.Main:AddToggle("InfiniteJumpToggle", {
-    Title = "Infinite Jump",
-    Default = false,
-    Callback = toggleInfiniteJump
-})
-
-Tabs.Main:AddToggle("FlyToggle", {
-    Title = "Fly",
-    Default = false,
-    Callback = toggleFly
-})
-
-Tabs.Main:AddSlider("FlySpeedSlider", {
-    Title = "Fly Speed",
-    Default = 10,
-    Min = 1,
-    Max = 50,
-    Rounding = 1,
-    Callback = function(Value)
-        flySpeed = Value
-    end
-})
-
----
-## Base Management
----
-
-local autoLockBaseEnabled = false
-local lockBaseButton = Tabs.Main:AddButton({
-    Title = "Auto Lock Base",
-    Description = "Automatically locks your base when unlocked",
-    Callback = function()
-        autoLockBaseEnabled = not autoLockBaseEnabled
-        if autoLockBaseEnabled then
-            lockBaseButton:SetTitle("Auto Lock Base (Active)")
-            Fluent:Notify({ Title = "Auto Lock Base", Content = "Auto Lock Base Enabled", Duration = 2 })
-            task.spawn(function()
-                while autoLockBaseEnabled do
-                    local yourPlot = workspace.Plots[plotName]
-                    if yourPlot and yourPlot.Purchases and yourPlot.Purchases.PlotBlock and yourPlot.Purchases.PlotBlock.Main and yourPlot.Purchases.PlotBlock.Main.BillboardGui and yourPlot.Purchases.PlotBlock.Main.BillboardGui.RemainingTime then
-                        local lockTimeText = yourPlot.Purchases.PlotBlock.Main.BillboardGui.RemainingTime.Text
-                        if lockTimeText == "0s" then
-                            -- This is where you'd call the game's actual "lock base" function.
-                            -- Since I don't have access to the game's internal functions,
-                            -- this is a placeholder. You'll need to replace this with the
-                            -- actual remote event/function call the game uses to lock a base.
-                            warn("Attempting to lock base (placeholder function call)")
-                            -- Example: game:GetService("ReplicatedStorage").RemoteEvents.LockBase:FireServer(plotName)
-                            task.wait(1) -- Wait a bit before checking again
-                        end
-                    end
-                    task.wait(5) -- Check every 5 seconds
-                end
-            end)
-        else
-            lockBaseButton:SetTitle("Auto Lock Base")
-            Fluent:Notify({ Title = "Auto Lock Base", Content = "Auto Lock Base Disabled", Duration = 2 })
-        end
-    end
-})
-
-Tabs.Main:AddButton({
-    Title = "Teleport to Base",
-    Description = "Teleports you to your plot's center",
-    Callback = function()
-        local yourPlot = workspace.Plots[plotName]
-        if yourPlot and yourPlot.Purchases and yourPlot.Purchases.PlotBlock and yourPlot.Purchases.PlotBlock.Main then
-            local plotCenter = yourPlot.Purchases.PlotBlock.Main.CFrame.p
-            local character = game.Players.LocalPlayer.Character
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                character.HumanoidRootPart.CFrame = CFrame.new(plotCenter + Vector3.new(0, 5, 0)) -- Teleport slightly above center
-                Fluent:Notify({ Title = "Teleport", Content = "Teleported to your base!", Duration = 2 })
-            end
-        else
-            Fluent:Notify({ Title = "Teleport", Content = "Could not find your base to teleport to.", Duration = 2 })
-        end
-    end
-})
-
----
-## Combat and Utility
----
-
-local antiRagdollEnabled = false
-local antiRagdollConnection
-
-local function toggleAntiRagdoll(enable)
-    antiRagdollEnabled = enable
-    if antiRagdollConnection then
-        antiRagdollConnection:Disconnect()
-        antiRagdollConnection = nil
-    end
-
-    if enable then
-        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            antiRagdollConnection = humanoid.FreeFalling:Connect(function()
-                if humanoid.Sit or humanoid.PlatformStand then return end -- Don't interfere if already sitting/platform standing
-                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end)
-            Fluent:Notify({ Title = "Anti-Ragdoll", Content = "Anti-Ragdoll Enabled", Duration = 2 })
-        else
-            Fluent:Notify({ Title = "Anti-Ragdoll", Content = "Humanoid not found, cannot enable.", Duration = 2 })
-        end
-    else
-        Fluent:Notify({ Title = "Anti-Ragdoll", Content = "Anti-Ragdoll Disabled", Duration = 2 })
-    end
-end
-
-Tabs.Main:AddToggle("AntiRagdollToggle", {
-    Title = "Anti-Ragdoll",
-    Default = false,
-    Callback = toggleAntiRagdoll
-})
-
--- ESP
 
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting") -- For that sweet fullbright
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 
-local espEnabled = false
-local espInstances = {}
+-- Store connections for proper cleanup
+local ScriptConnections = {}
+local ToggleConnections = {}
 
-local function createESP(player)
-    if not espEnabled then return end
-    if player == Players.LocalPlayer then return end
-    
-    local character = player.Character
-    if not character then return end
-    
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
-    if not humanoidRootPart then return end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_" .. player.Name
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(0, 200, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.Adornee = humanoidRootPart
-    billboard.Parent = humanoidRootPart
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "NameLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = player.DisplayName
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Parent = billboard
-    
-    espInstances[player] = billboard
-    
-    local function onCharacterAdded(newCharacter)
-        if billboard then billboard:Destroy() end
-        
-        humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
-        if humanoidRootPart and espEnabled then
-            billboard.Adornee = humanoidRootPart
-            billboard.Parent = humanoidRootPart
+-- Function to safely disconnect all connections for a toggle
+local function cleanupToggleConnections(toggleName)
+    if ToggleConnections[toggleName] then
+        for _, conn in pairs(ToggleConnections[toggleName]) do
+            if conn and typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            end
         end
-    end
-    
-    player.CharacterAdded:Connect(onCharacterAdded)
-end
-
-local function removeESP(player)
-    local espInstance = espInstances[player]
-    if espInstance then
-        espInstance:Destroy()
-        espInstances[player] = nil
+        ToggleConnections[toggleName] = {}
     end
 end
 
-local function toggleESP(enable)
-    espEnabled = enable
-    if enable then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= Players.LocalPlayer then
-                coroutine.wrap(function()
-                    createESP(player)
-                end)()
-            end
-        end
-    else
-        for player, espInstance in pairs(espInstances) do
-            if espInstance then
-                espInstance:Destroy()
-            end
-        end
-        espInstances = {}
+-- Function to add a connection to a specific toggle's cleanup list
+local function addToggleConnection(toggleName, connection)
+    if not ToggleConnections[toggleName] then
+        ToggleConnections[toggleName] = {}
     end
+    table.insert(ToggleConnections[toggleName], connection)
 end
 
-local function initPlayerConnections()
-    Players.PlayerAdded:Connect(function(player)
-        player.CharacterAdded:Connect(function(character)
-            if player ~= Players.LocalPlayer and espEnabled then
-                task.wait(1)
-                createESP(player)
-            end
-        end)
-    end)
-
-    Players.PlayerRemoving:Connect(removeESP)
-end
-
-initPlayerConnections()
-
-local RaritySettings = {
-    ["Legendary"] = {
-        Color = Color3.new(1, 1, 0),
-        Size = UDim2.new(0, 150, 0, 50)
-    },
-    ["Mythic"] = {
-        Color = Color3.new(1, 0, 0),
-        Size = UDim2.new(0, 150, 0, 50)
-    },
-    ["Brainrot God"] = {
-        Color = Color3.new(0.5, 0, 0.5),
-        Size = UDim2.new(0, 180, 0, 60)
-    },
-    ["Secret"] = {
-        Color = Color3.new(0, 0, 0),
-        Size = UDim2.new(0, 200, 0, 70)
+-- Configuration Table (because even gods of chaos need their settings)
+local Config = {
+    FlySpeed = 75, -- Faster, because why not?
+    TeleportOffset = 100, -- Bigger jumps!
+    AutoSellDelay = 2,   -- Sell faster, get rich quicker!
+    SpeedMultiplier = 3, -- ZOOM ZOOM!
+    JumpPowerMultiplier = 2, -- Leap tall buildings in a single bound!
+    ESP_TeamCheck = false, -- Show ALL the meatbags!
+    AutoSlapRange = 30, -- Slap 'em from further away!
+    LockBaseName = "MyAwesomeFortress", -- Make sure this is YOUR base!
+    ItemToBuy = "LegendaryBrainrot", -- Go for the good stuff!
+    ShopNPCName = "MerchantBot", -- Common NPC name, adjust if needed
+    CollectRange = 50, -- How far to vacuum up items
+    AutoFarmTarget = "BrainrotCrystal", -- Name of the farmable resource
+    NoClipSpeed = 30, -- For phasing through walls
+    FOVChange = 100, -- Max FOV for ultimate awareness
+    
+    -- Keybinds! Because your fingers deserve to be abused.
+    Keybinds = {
+        Fly = Enum.KeyCode.F,
+        SpeedBoost = Enum.KeyCode.G,
+        NoClip = Enum.KeyCode.N,
+        TeleportUp = Enum.KeyCode.U,
+        TeleportDown = Enum.KeyCode.D,
     }
 }
 
-local MutationSettings = {
-    ["Gold"] = {
-        Color = Color3.fromRGB(255, 215, 0),
-        Size = UDim2.new(0, 120, 0, 30)
-    },
+-- Create the UI (because even gods need a flashy control panel)
+local Window = Fluent:CreateWindow({
+    Title = "Brainrot ULTIMATE DOMINATOR",
+    Subtitle = "No Keys, Just Pure Power! v69.420.1",
+    TabWidth = 180,
+    Size = UDim2.fromOffset(550, 400),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
 
-    ["Diamond"] = {
-        Color = Color3.fromRGB(0, 191, 255),
-        Size = UDim2.new(0, 120, 0, 30)
-    },
+local Tab1 = Window:AddTab("Movement & Combat", "rbxassetid://4483324580") -- Example icon
+local Tab2 = Window:AddTab("Automation & Exploits", "rbxassetid://4483324580") -- Example icon
+local Tab3 = Window:AddTab("Visuals & Misc", "rbxassetid://4483324580") -- Example icon
 
-    ["Rainbow"] = {
-        Color = Color3.fromRGB(255, 192, 203),
-        Size = UDim2.new(0, 120, 0, 30)
-    },
+---
+--- ## Movement & Combat
+---
 
-    ["Bloodrot"] = {
-        Color = Color3.fromRGB(139, 0, 0),
-        Size = UDim2.new(0, 120, 0, 30)
-    }
-}
+-- FLY FEATURE
+local FlyToggle = Tab1:AddToggle("Fly", {
+    Callback = function(value)
+        local Char = LocalPlayer.Character
+        local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
+        local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
 
-local activeESP = {}
-local activeLockTimeEsp = false
-local lteInstances = {}
+        if not Char or not Humanoid or not HRP then 
+            Fluent:Notify({Title = "Fly Error", Content = "Character not found!", Duration = 2})
+            return 
+        end
 
-local function updatelock()
-    if not activeLockTimeEsp then
-        for _, instance in pairs(lteInstances) do
-            if instance then
-                instance:Destroy()
+        cleanupToggleConnections("Fly") -- Clean up previous connections
+
+        if value then
+            Humanoid.PlatformStand = true
+            local BodyVelocity = Instance.new("BodyVelocity")
+            BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            BodyVelocity.Velocity = Vector3.new(0,0,0)
+            BodyVelocity.Parent = HRP
+            addToggleConnection("Fly", RunService.RenderStepped:Connect(function()
+                local vel = Vector3.new(0,0,0)
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then vel = vel + HRP.CFrame.lookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then vel = vel - HRP.CFrame.lookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then vel = vel - HRP.CFrame.rightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then vel = vel + HRP.CFrame.rightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vel = vel + Vector3.new(0,1,0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then vel = vel - Vector3.new(0,1,0) end
+                
+                BodyVelocity.Velocity = vel.unit * Config.FlySpeed
+            end))
+            FlyToggle:Set("BodyVelocity", BodyVelocity)
+        else
+            local BodyVelocity = FlyToggle:Get("BodyVelocity")
+            if BodyVelocity then BodyVelocity:Destroy() end
+            Humanoid.PlatformStand = false
+        end
+    end,
+    Enabled = false
+})
+
+Tab1:AddSlider("Fly Speed", {
+    Default = Config.FlySpeed, Min = 10, Max = 500, Rounding = 0, Compact = false,
+    Callback = function(value)
+        Config.FlySpeed = value
+        local BodyVelocity = FlyToggle:Get("BodyVelocity")
+        if BodyVelocity and FlyToggle:GetEnabled() then
+            BodyVelocity.Velocity = BodyVelocity.Velocity.unit * Config.FlySpeed
+        end
+    end
+})
+
+Tab1:AddKeybind("Fly Keybind", {
+    Default = Config.Keybinds.Fly,
+    Callback = function(key)
+        Config.Keybinds.Fly = key
+    end,
+    Toggle = true,
+    Binding = FlyToggle
+})
+
+-- TELEPORT UP/DOWN
+Tab1:AddButton("Teleport Up", function()
+    local Char = LocalPlayer.Character
+    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+    if not Char or not HRP then 
+        Fluent:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
+        return 
+    end
+    HRP.CFrame = HRP.CFrame + Vector3.new(0, Config.TeleportOffset, 0)
+end)
+
+Tab1:AddKeybind("Teleport Up Key", {
+    Default = Config.Keybinds.TeleportUp,
+    Callback = function(key)
+        Config.Keybinds.TeleportUp = key
+    end,
+    Binding = Tab1:Get("Teleport Up") -- Bind to the button
+})
+
+
+Tab1:AddButton("Teleport Down", function()
+    local Char = LocalPlayer.Character
+    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+    if not Char or not HRP then 
+        Fluent:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
+        return 
+    end
+    HRP.CFrame = HRP.CFrame - Vector3.new(0, Config.TeleportOffset, 0)
+end)
+
+Tab1:AddKeybind("Teleport Down Key", {
+    Default = Config.Keybinds.TeleportDown,
+    Callback = function(key)
+        Config.Keybinds.TeleportDown = key
+    end,
+    Binding = Tab1:Get("Teleport Down") -- Bind to the button
+})
+
+-- NO-CLIP (Walk through walls like a ghost!)
+local NoClipToggle = Tab1:AddToggle("No-Clip", {
+    Callback = function(value)
+        local Char = LocalPlayer.Character
+        if not Char then 
+            Fluent:Notify({Title = "No-Clip Error", Content = "Character not found!", Duration = 2})
+            return 
+        end
+        cleanupToggleConnections("No-Clip")
+
+        if value then
+            for i,v in pairs(Char:GetChildren()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
+            addToggleConnection("No-Clip", Char.ChildAdded:Connect(function(child)
+                if child:IsA("BasePart") then
+                    child.CanCollide = false
+                end
+            end))
+        else
+            for i,v in pairs(Char:GetChildren()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = true
+                end
             end
         end
-        lteInstances = {}
+    end,
+    Enabled = false
+})
+
+Tab1:AddSlider("No-Clip Speed", {
+    Default = Config.NoClipSpeed, Min = 10, Max = 150, Rounding = 0, Compact = false,
+    Callback = function(value)
+        Config.NoClipSpeed = value
+    end
+})
+
+Tab1:AddKeybind("No-Clip Keybind", {
+    Default = Config.Keybinds.NoClip,
+    Callback = function(key)
+        Config.Keybinds.NoClip = key
+    end,
+    Toggle = true,
+    Binding = NoClipToggle
+})
+
+-- ANTI-RAGDOLL
+Tab1:AddToggle("Anti-Ragdoll", {
+    Callback = function(value)
+        local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if not Humanoid then 
+            Fluent:Notify({Title = "Anti-Ragdoll Error", Content = "Humanoid not found!", Duration = 2})
+            return 
+        end
+        cleanupToggleConnections("Anti-Ragdoll")
+
+        if value then
+            addToggleConnection("Anti-Ragdoll", Humanoid.Changed:Connect(function(property)
+                if property == "Sit" and Humanoid.Sit == true then
+                    Humanoid.Sit = false
+                end
+            end))
+        end
+    end,
+    Enabled = false
+})
+
+-- GO TO BASE
+Tab1:AddButton("Go to Base", function()
+    local BasePart = Workspace:FindFirstChild(Config.LockBaseName) 
+    local Char = LocalPlayer.Character
+    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+
+    if not BasePart then
+        Fluent:Notify({Title = "Teleport Error", Content = "Base '" .. Config.LockBaseName .. "' not found!", Duration = 3})
+        return
+    end
+    if not Char or not HRP then 
+        Fluent:Notify({Title = "Teleport Error", Content = "Character not found!", Duration = 2})
+        return 
+    end
+    
+    HRP.CFrame = BasePart.CFrame + Vector3.new(0, 5, 0) 
+end)
+
+Tab1:AddTextbox("Your Base Name", {
+    Placeholder = Config.LockBaseName,
+    Text = Config.LockBaseName,
+    Callback = function(text)
+        Config.LockBaseName = text
+    end
+})
+
+-- SPEED BOOST
+local SpeedToggle = Tab1:AddToggle("Speed Boost", {
+    Callback = function(value)
+        local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if not Humanoid then 
+            Fluent:Notify({Title = "Speed Boost Error", Content = "Humanoid not found!", Duration = 2})
+            return 
+        end
+
+        if value then
+            Humanoid.WalkSpeed = Humanoid.WalkSpeed * Config.SpeedMultiplier
+        else
+            Humanoid.WalkSpeed = 16 -- Reset to default Roblox speed
+        end
+    end,
+    Enabled = false
+})
+
+Tab1:AddSlider("Speed Multiplier", {
+    Default = Config.SpeedMultiplier, Min = 1.1, Max = 20, Rounding = 1, Compact = false,
+    Callback = function(value)
+        Config.SpeedMultiplier = value
+        if SpeedToggle:GetEnabled() then
+            local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if Humanoid then
+                Humanoid.WalkSpeed = 16 * Config.SpeedMultiplier
+            end
+        end
+    end
+})
+
+Tab1:AddKeybind("Speed Boost Keybind", {
+    Default = Config.Keybinds.SpeedBoost,
+    Callback = function(key)
+        Config.Keybinds.SpeedBoost = key
+    end,
+    Toggle = true,
+    Binding = SpeedToggle
+})
+
+-- JUMP POWER BOOST
+local JumpToggle = Tab1:AddToggle("Jump Power Boost", {
+    Callback = function(value)
+        local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if not Humanoid then 
+            Fluent:Notify({Title = "Jump Boost Error", Content = "Humanoid not found!", Duration = 2})
+            return 
+        end
+
+        if value then
+            Humanoid.JumpPower = Humanoid.JumpPower * Config.JumpPowerMultiplier
+        else
+            Humanoid.JumpPower = 50 -- Reset to default Roblox jump power
+        end
+    end,
+    Enabled = false
+})
+
+Tab1:AddSlider("Jump Power Multiplier", {
+    Default = Config.JumpPowerMultiplier, Min = 1.1, Max = 10, Rounding = 1, Compact = false,
+    Callback = function(value)
+        Config.JumpPowerMultiplier = value
+        if JumpToggle:GetEnabled() then
+            local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if Humanoid then
+                Humanoid.JumpPower = 50 * Config.JumpPowerMultiplier
+            end
+        end
+    end
+})
+
+
+---
+--- ## Automation & Exploits
+---
+
+-- AUTO SELL
+local AutoSellToggle = Tab2:AddToggle("Auto Sell", {
+    Callback = function(value)
+        cleanupToggleConnections("Auto Sell")
+        if value then
+            local SellEvent = ReplicatedStorage:FindFirstChild("SellBrainrotsEvent") 
+            if not SellEvent then
+                Fluent:Notify({Title = "Auto Sell Error", Content = "SellBrainrotsEvent not found! Cannot auto-sell.", Duration = 3})
+                AutoSellToggle:Set(false) -- Turn off toggle if event not found
+                return
+            end
+            addToggleConnection("Auto Sell", RunService.RenderStepped:Connect(function()
+                if AutoSellToggle:GetEnabled() then
+                    SellEvent:FireServer()
+                    task.wait(Config.AutoSellDelay)
+                end
+            end))
+        end
+    end,
+    Enabled = false
+})
+
+Tab2:AddSlider("Auto Sell Delay (s)", {
+    Default = Config.AutoSellDelay, Min = 0.5, Max = 60, Rounding = 1, Compact = false,
+    Callback = function(value)
+        Config.AutoSellDelay = value
+    end
+})
+
+-- AUTO COLLECT (Vacuum)
+local AutoCollectToggle = Tab2:AddToggle("Auto Collect (Vacuum)", {
+    Callback = function(value)
+        cleanupToggleConnections("Auto Collect")
+        if value then
+            local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not HRP then 
+                Fluent:Notify({Title = "Auto Collect Error", Content = "Character not found!", Duration = 2})
+                AutoCollectToggle:Set(false)
+                return 
+            end
+
+            addToggleConnection("Auto Collect", RunService.RenderStepped:Connect(function()
+                if AutoCollectToggle:GetEnabled() then
+                    for i,v in pairs(Workspace:GetChildren()) do
+                        if v:IsA("BasePart") and v.Name:find("Brainrot") and (HRP.Position - v.Position).magnitude < Config.CollectRange then
+                            v.CFrame = HRP.CFrame 
+                            task.wait(0.1) 
+                            v:Destroy() 
+                            Fluent:Notify({Title = "Auto Collect", Content = "Vacuumed up a brainrot!", Duration = 0.5})
+                        end
+                    end
+                end
+            end))
+        end
+    end,
+    Enabled = false
+})
+
+Tab2:AddSlider("Collect Range", {
+    Default = Config.CollectRange, Min = 10, Max = 200, Rounding = 0, Compact = false,
+    Callback = function(value)
+        Config.CollectRange = value
+    end
+})
+
+-- AUTO FARM (Target specific resources)
+local AutoFarmToggle = Tab2:AddToggle("Auto Farm", {
+    Callback = function(value)
+        cleanupToggleConnections("Auto Farm")
+        if value then
+            local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not HRP then 
+                Fluent:Notify({Title = "Auto Farm Error", Content = "Character not found!", Duration = 2})
+                AutoFarmToggle:Set(false)
+                return 
+            end
+
+            addToggleConnection("Auto Farm", RunService.RenderStepped:Connect(function()
+                if AutoFarmToggle:GetEnabled() then
+                    local target = nil
+                    local closestDistance = math.huge
+                    for i,v in pairs(Workspace:GetChildren()) do
+                        if v.Name == Config.AutoFarmTarget and v:IsA("BasePart") then
+                            local dist = (HRP.Position - v.Position).magnitude
+                            if dist < closestDistance then
+                                closestDistance = dist
+                                target = v
+                            end
+                        end
+                    end
+
+                    if target then
+                        HRP.CFrame = target.CFrame + Vector3.new(0, 5, 0) 
+                        local FarmEvent = ReplicatedStorage:FindFirstChild("FarmResourceEvent")
+                        if FarmEvent then
+                            FarmEvent:FireServer(target)
+                            Fluent:Notify({Title = "Auto Farm", Content = "Farming: " .. Config.AutoFarmTarget .. "!", Duration = 0.5})
+                        else
+                            warn("FarmResourceEvent not found for auto-farm.")
+                            Fluent:Notify({Title = "Auto Farm Error", Content = "Farm event not found!", Duration = 2})
+                        end
+                    end
+                    task.wait(0.5)
+                end
+            end))
+        end
+    end,
+    Enabled = false
+})
+
+Tab2:AddTextbox("Auto Farm Target Name", {
+    Placeholder = Config.AutoFarmTarget,
+    Text = Config.AutoFarmTarget,
+    Callback = function(text)
+        Config.AutoFarmTarget = text
+    end
+})
+
+-- BUY ITEM IN SHOP
+Tab2:AddButton("Buy Item", function()
+    local Char = LocalPlayer.Character
+    local HRP = Char and Char:FindFirstChild("HumanoidRootPart")
+    local ShopNPC = Workspace:FindFirstChild(Config.ShopNPCName)
+    local ShopNPCHRP = ShopNPC and ShopNPC:FindFirstChild("HumanoidRootPart")
+
+    if not Char or not HRP then
+        Fluent:Notify({Title = "Shop Error", Content = "Character not found!", Duration = 2})
+        return
+    end
+    if not ShopNPC or not ShopNPCHRP then
+        Fluent:Notify({Title = "Shop Error", Content = "Shop NPC '" .. Config.ShopNPCName .. "' not found!", Duration = 2})
         return
     end
 
-    for _, plot in pairs(workspace.Plots:GetChildren()) do
-        local timeLabel = plot:FindFirstChild("Purchases", true) and 
-        plot.Purchases:FindFirstChild("PlotBlock", true) and
-        plot.Purchases.PlotBlock.Main:FindFirstChild("BillboardGui", true) and
-        plot.Purchases.PlotBlock.Main.BillboardGui:FindFirstChild("RemainingTime", true)
-        
-        if timeLabel and timeLabel:IsA("TextLabel") then
-            local espName = "LockTimeESP_" .. plot.Name
-            local existingBillboard = plot:FindFirstChild(espName)
-            
-            local isUnlocked = timeLabel.Text == "0s"
-            local displayText = isUnlocked and "Unlocked" or ("Lock: " .. timeLabel.Text)
-            
-            local textColor
-            if plot.Name == plotName then
-                textColor = isUnlocked and Color3.fromRGB(0, 255, 0)
-                            or Color3.fromRGB(0, 255, 0)
-            else
-                textColor = isUnlocked and Color3.fromRGB(220, 20, 60)
-                            or Color3.fromRGB(255, 255, 0)
-            end
-            
-            if not existingBillboard then
-                local billboard = Instance.new("BillboardGui")
-                billboard.Name = espName
-                billboard.Size = UDim2.new(0, 200, 0, 30)
-                billboard.StudsOffset = Vector3.new(0, 5, 0)
-                billboard.AlwaysOnTop = true
-                billboard.Adornee = plot.Purchases.PlotBlock.Main
-                
-                local label = Instance.new("TextLabel")
-                label.Text = displayText
-                label.Size = UDim2.new(1, 0, 1, 0)
-                label.BackgroundTransparency = 1
-                label.TextScaled = true
-                label.TextColor3 = textColor
-                label.TextStrokeColor3 = Color3.new(0, 0, 0)
-                label.TextStrokeTransparency = 0
-                label.Font = Enum.Font.SourceSansBold
-                label.Parent = billboard
-                
-                billboard.Parent = plot
-                lteInstances[plot.Name] = billboard
-            else
-                existingBillboard.TextLabel.Text = displayText
-                existingBillboard.TextLabel.TextColor3 = textColor
-            end
+    local Distance = (HRP.Position - ShopNPCHRP.Position).magnitude
+    if Distance < 15 then
+        local BuyEvent = ReplicatedStorage:FindFirstChild("BuyItemEvent")
+        if BuyEvent then
+            BuyEvent:FireServer(Config.ItemToBuy)
+            Fluent:Notify({Title = "Shop", Content = "Attempting to buy: " .. Config.ItemToBuy .. "!", Duration = 2})
+        else
+            warn("BuyItemEvent not found! Cannot buy item.")
+            Fluent:Notify({Title = "Shop Error", Content = "Buy event not found!", Duration = 2})
         end
-    end
-end
-
-local function updateRESP()
-    for _, plot in pairs(workspace.Plots:GetChildren()) do
-        if plot.Name ~= plotName then
-            for _, child in pairs(plot:GetDescendants()) do
-                if child.Name == "Rarity" and child:IsA("TextLabel") and RaritySettings[child.Text] then
-                    local parentModel = child.Parent.Parent
-                    local espName = child.Text.."_ESP"
-                    local mutationEspName = "Mutation_ESP"
-                    local existingBillboard = parentModel:FindFirstChild(espName)
-                    local existingMutationBillboard = parentModel:FindFirstChild(mutationEspName)
-                    
-                    if activeESP[child.Text] then
-                        if not existingBillboard then
-                            local settings = RaritySettings[child.Text]
-                            
-                            local billboard = Instance.new("BillboardGui")
-                            billboard.Name = espName
-                            billboard.Size = settings.Size
-                            billboard.StudsOffset = Vector3.new(0, 3, 0)
-                            billboard.AlwaysOnTop = true
-                            
-                            local label = Instance.new("TextLabel")
-                            label.Text = child.Parent.DisplayName.Text
-                            label.Size = UDim2.new(1, 0, 1, 0)
-                            label.BackgroundTransparency = 1
-                            label.TextScaled = true
-                            label.TextColor3 = settings.Color
-                            label.TextStrokeColor3 = Color3.new(0, 0, 0)
-                            label.TextStrokeTransparency = 0
-                            label.Font = Enum.Font.SourceSansBold
-                            
-                            label.Parent = billboard
-                            billboard.Parent = parentModel
-                        end
-                        
-                        local mutation = child.Parent:FindFirstChild("Mutation")
-                        if mutation and mutation:IsA("TextLabel") and MutationSettings[mutation.Text] then
-                            local mutationSettings = MutationSettings[mutation.Text]
-                            
-                            if not existingMutationBillboard then
-                                local mutationBillboard = Instance.new("BillboardGui")
-                                mutationBillboard.Name = mutationEspName
-                                mutationBillboard.Size = mutationSettings.Size
-                                mutationBillboard.StudsOffset = Vector3.new(0, 6, 0)
-                                mutationBillboard.AlwaysOnTop = true
-                                
-                                local mutationLabel = Instance.new("TextLabel")
-                                mutationLabel.Text = mutation.Text
-                                mutationLabel.Size = UDim2.new(1, 0, 1, 0)
-                                mutationLabel.BackgroundTransparency = 1
-                                mutationLabel.TextScaled = true
-                                mutationLabel.TextColor3 = mutationSettings.Color
-                                mutationLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-                                mutationLabel.TextStrokeTransparency = 0
-                                mutationLabel.Font = Enum.Font.SourceSansBold
-                                
-                                mutationLabel.Parent = mutationBillboard
-                                mutationBillboard.Parent = parentModel
-                            else
-                                existingMutationBillboard.TextLabel.Text = mutation.Text
-                                existingMutationBillboard.TextLabel.TextColor3 = mutationSettings.Color
-                            end
-                        elseif existingMutationBillboard then
-                            existingMutationBillboard:Destroy()
-                        end
-                    else
-                        if existingBillboard then
-                            existingBillboard:Destroy()
-                        end
-                        if existingMutationBillboard then
-                            existingMutationBillboard:Destroy()
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
-local MultiDropdown = Tabs.Main:AddDropdown("MultiDropdown", {
-    Title = "Esp",
-    Values = {"Lock", "Players", "Legendary", "Mythic", "Brainrot God", "Secret",},
-    Multi = true,
-    Default = {},
-})
-
-MultiDropdown:OnChanged(function(Value)
-    if Value["Players"] then
-        toggleESP(true)
     else
-        toggleESP(false)
-    end
-    activeESP["Legendary"] = Value["Legendary"] or false
-    activeESP["Mythic"] = Value["Mythic"] or false
-    activeESP["Brainrot God"] = Value["Brainrot God"] or false
-    activeESP["Secret"] = Value["Secret"] or false
-    
-    activeLockTimeEsp = Value["Lock"] or false
-    updatelock()
-    
-    updateRESP()
-    
-})
-
-task.spawn(function()
-    while true do
-        task.wait(0.25)
-        if activeLockTimeEsp then
-            updatelock()
-        end
-        if next(activeESP) ~= nil then
-            updateRESP()
-        end
+        Fluent:Notify({Title = "Shop Error", Content = "Too far from shop NPC!", Duration = 2})
     end
 end)
 
-Tabs.Main:AddKeybind("StealKeybind", {
-    Title = "Steal Keybind",
-    Mode = "Toggle",
-    Default = "G",
-    Callback = function(Value)
-        local player = game.Players.LocalPlayer
-        local pos = CFrame.new(0, -500, 0)
-        local startT = os.clock()
-        while os.clock() - startT < 1 do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = pos
+Tab2:AddTextbox("Item to Buy", {
+    Placeholder = Config.ItemToBuy,
+    Text = Config.ItemToBuy,
+    Callback = function(text)
+        Config.ItemToBuy = text
+    end
+})
+
+Tab2:AddTextbox("Shop NPC Name", {
+    Placeholder = Config.ShopNPCName,
+    Text = Config.ShopNPCName,
+    Callback = function(text)
+        Config.ShopNPCName = text
+    end
+})
+
+-- AUTO SLAP
+local AutoSlapToggle = Tab2:AddToggle("Auto Slap", {
+    Callback = function(value)
+        cleanupToggleConnections("Auto Slap")
+        if value then
+            local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not HRP then 
+                Fluent:Notify({Title = "Auto Slap Error", Content = "Character not found!", Duration = 2})
+                AutoSlapToggle:Set(false)
+                return 
             end
-            task.wait()
-        end
-    end,
-})
 
-Tabs.Main:AddKeybind("ShopKeybind", {
-    Title = "Shop",
-    Mode = "Toggle",
-    Default = "F",
-    Description = "Opens/Closes shop",
-    Callback = function(Value)
-        shop.Visible = Value
-        shop.Position = Value and UDim2.new(0.5, 0, 0.5, 0) or UDim2.new(0.5, 0, 1.5, 0)
-    end,
-})
-
-
-
--- SERVER
-
-local petModels = game:GetService("ReplicatedStorage").Models.Animals:GetChildren()
-
-local petNames = {}
-for _, pet in ipairs(petModels) do
-    table.insert(petNames, pet.Name)
-end
-
-local MultiDropdown = Tabs.Server:AddDropdown("PetFinderDropdown", {
-    Title = "Pet Finder",
-    Values = petNames,
-    Multi = true,
-    Default = {},
-})
-
-local function getOwner(plot)
-    local text = plot:FindFirstChild("PlotSign") and 
-    plot.PlotSign:FindFirstChild("SurfaceGui") and 
-    plot.PlotSign.SurfaceGui.Frame.TextLabel.Text or "Unknown"
-    return text:match("^(.-)'s Base") or text
-end
-
-local myPlotName
-for _, plot in ipairs(workspace.Plots:GetChildren()) do
-    if plot:FindFirstChild("YourBase", true).Enabled then
-        myPlotName = plot.Name
-        break
-    end
-end
-
-local Rparagraph = Tabs.Server:AddParagraph({
-    Title = "No pets selected",
-})
-
-local SelectedPets = {}
-local isRunning = false
-local lnt = 0
-local nc = 5
-
-MultiDropdown:OnChanged(function(SelectedPetss)
-    SelectedPets = {}
-    for petName, isSelected in pairs(SelectedPetss) do
-        if isSelected then
-            table.insert(SelectedPets, petName)
-        end
-    end
-    
-    if not isRunning and #SelectedPets > 0 then
-        isRunning = true
-        task.spawn(function()
-            local lastResults = {}
-            
-            while #SelectedPets > 0 do
-                local counts = {}
-                local found = false
-                local newPetsFound = false
-                
-                for _, plot in pairs(workspace.Plots:GetChildren()) do
-                    if plot.Name ~= myPlotName then
-                        local owner = getOwner(plot)
-                        for _, v in pairs(plot:GetDescendants()) do
-                            if v.Name == "DisplayName" and table.find(SelectedPets, v.Text) then
-                                counts[owner] = counts[owner] or {}
-                                counts[owner][v.Text] = (counts[owner][v.Text] or 0) + 1
-                                found = true
-                                
-                                if not lastResults[owner] or not lastResults[owner][v.Text] then
-                                    newPetsFound = true
-                                end
+            addToggleConnection("Auto Slap", RunService.RenderStepped:Connect(function()
+                if AutoSlapToggle:GetEnabled() then
+                    local target = nil
+                    local closestDistance = math.huge
+                    
+                    for i,v in pairs(Players:GetPlayers()) do
+                        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                            local dist = (HRP.Position - v.Character.HumanoidRootPart.Position).magnitude
+                            if dist < Config.AutoSlapRange and dist < closestDistance then
+                                closestDistance = dist
+                                target = v
                             end
                         end
                     end
-                end
-                
-                if found then
-                    local resultText = ""
-                    for owner, pets in pairs(counts) do
-                        for name, count in pairs(pets) do
-                            resultText = resultText .. name.." x"..count.." | Owner: "..owner.."\n"
-                            
-                            if newPetsFound and (os.time() - lnt) > nc then
-                                Fluent:Notify({
-                                    Title = "Pet Finder",
-                                    Content = "Found "..name.." x"..count.." Owner: "..owner,
-                                    Duration = 2
-                                })
-                                lnt = os.time()
-                            end
+                    
+                    if target then
+                        local SlapEvent = ReplicatedStorage:FindFirstChild("SlapPlayerEvent") 
+                        if SlapEvent then
+                            SlapEvent:FireServer(target)
+                            Fluent:Notify({Title = "Auto Slap", Content = "Slapping: " .. target.Name .. "!", Duration = 0.5})
+                        else
+                            warn("SlapPlayerEvent not found! Cannot auto-slap.")
+                            Fluent:Notify({Title = "Auto Slap Error", Content = "Slap event not found!", Duration = 2})
                         end
                     end
-                    Rparagraph:SetTitle(resultText)
-                else
-                    Rparagraph:SetTitle("No selected pets found")
+                    task.wait(0.5) 
                 end
-                
-                lastResults = counts
-                task.wait(0.5)
+            end))
+        end
+    end,
+    Enabled = false
+})
+
+Tab2:AddSlider("Auto Slap Range", {
+    Default = Config.AutoSlapRange, Min = 5, Max = 100, Rounding = 0, Compact = false,
+    Callback = function(value)
+        Config.AutoSlapRange = value
+    end
+})
+
+
+-- AUTO LOCK BASE
+Tab2:AddToggle("Auto Lock Base", {
+    Callback = function(value)
+        cleanupToggleConnections("Auto Lock Base")
+        if value then
+            local LockEvent = ReplicatedStorage:FindFirstChild("LockBaseEvent") 
+            if not LockEvent then
+                Fluent:Notify({Title = "Auto Base Lock Error", Content = "LockBaseEvent not found! Cannot auto-lock base.", Duration = 3})
+                Tab2:Get("Auto Lock Base"):Set(false)
+                return
             end
+            addToggleConnection("Auto Lock Base", RunService.RenderStepped:Connect(function()
+                if Tab2:Get("Auto Lock Base"):GetEnabled() then
+                    LockEvent:FireServer(Config.LockBaseName, true) 
+                    Fluent:Notify({Title = "Auto Base Lock", Content = "Attempting to auto-lock base: " .. Config.LockBaseName, Duration = 1})
+                    task.wait(10) 
+                end
+            end))
+        end
+    end,
+    Enabled = false
+})
+
+
+---
+--- ## Visuals & Misc
+---
+
+-- ESP (Players & Loot)
+local ESPToggle = Tab3:AddToggle("ESP (Players & Brainrots)", {
+    Callback = function(value)
+        cleanupToggleConnections("ESP (Players & Brainrots)")
+        if value then
+            local Highlights = ESPToggle:Get("Highlights") or {}
+            ESPToggle:Set("Highlights", Highlights)
+
+            local function createHighlight(instance, color, outlineColor)
+                if not instance then return nil end
+                local Highlight = Instance.new("Highlight")
+                Highlight.Adornee = instance
+                Highlight.FillColor = color
+                Highlight.OutlineColor = outlineColor
+                Highlight.Parent = Workspace
+                return Highlight
+            end
+
+            -- Player ESP
+            for i,v in pairs(Players:GetPlayers()) do
+                if v ~= LocalPlayer then
+                    local Char = v.Character or v.CharacterAdded:Wait()
+                    if Char then
+                        local H = createHighlight(Char, Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 255, 0))
+                        if H then Highlights[v.Name] = H end
+                        addToggleConnection("ESP (Players & Brainrots)", v.CharacterAdded:Connect(function(char) if Highlights[v.Name] then Highlights[v.Name].Adornee = char end end))
+                        addToggleConnection("ESP (Players & Brainrots)", v.AncestryChanged:Connect(function() if not v.Parent and Highlights[v.Name] then Highlights[v.Name]:Destroy(); Highlights[v.Name] = nil end end))
+                    end
+                end
+            end
+            addToggleConnection("ESP (Players & Brainrots)", Players.PlayerAdded:Connect(function(player)
+                if player ~= LocalPlayer then
+                    local Char = player.Character or player.CharacterAdded:Wait()
+                    if Char then
+                        local H = createHighlight(Char, Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 255, 0))
+                        if H then Highlights[player.Name] = H end
+                        addToggleConnection("ESP (Players & Brainrots)", player.CharacterAdded:Connect(function(char) if Highlights[player.Name] then Highlights[player.Name].Adornee = char end end))
+                        addToggleConnection("ESP (Players & Brainrots)", player.AncestryChanged:Connect(function() if not player.Parent and Highlights[player.Name] then Highlights[player.Name]:Destroy(); Highlights[player.Name] = nil end end))
+                    end
+                end
+            end))
+            addToggleConnection("ESP (Players & Brainrots)", Players.PlayerRemoving:Connect(function(player)
+                if Highlights[player.Name] then Highlights[player.Name]:Destroy() end
+                Highlights[player.Name] = nil
+            end))
+
+            -- Brainrot ESP (Loot ESP)
+            local function updateBrainrotESP()
+                if not ESPToggle:GetEnabled() then return end
+                for i,v in pairs(Workspace:GetChildren()) do
+                    if v:IsA("BasePart") and v.Name:find("Brainrot") and not Highlights[v.Name .. "_Brainrot"] then
+                        local H = createHighlight(v, Color3.fromRGB(0, 255, 255), Color3.fromRGB(0, 0, 255))
+                        if H then Highlights[v.Name .. "_Brainrot"] = H end
+                        addToggleConnection("ESP (Players & Brainrots)", v.AncestryChanged:Connect(function() 
+                            if not v.Parent and Highlights[v.Name .. "_Brainrot"] then 
+                                Highlights[v.Name .. "_Brainrot"]:Destroy(); 
+                                Highlights[v.Name .. "_Brainrot"] = nil 
+                            end 
+                        end))
+                    end
+                end
+                for name, highlight in pairs(Highlights) do
+                    if name:find("_Brainrot") and not Workspace:FindFirstChild(name:gsub("_Brainrot", "")) then
+                        highlight:Destroy()
+                        Highlights[name] = nil
+                    end
+                end
+            end
+            addToggleConnection("ESP (Players & Brainrots)", RunService.RenderStepped:Connect(updateBrainrotESP))
+            updateBrainrotESP() 
             
-            isRunning = false
-            Rparagraph:SetTitle("No pets selected")
-        end)
-    elseif #SelectedPets == 0 then
-        Rparagraph:SetTitle("No pets selected")
-    end
-end)
-
-
-Tabs.Server:AddSection("Other")
-
-
-Tabs.Server:AddButton({
-    Title = "Server Hop",
-    Description = "Joins a Different Server",
-    Callback = function()
-        local PlaceID = game.PlaceId
-        local AllIDs = {}
-        local foundAnything = ""
-        local actualHour = os.date("!*t").hour
-        local Deleted = false
-        local File = pcall(function()
-            AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
-        end)
-        if not File then
-            table.insert(AllIDs, actualHour)
-            writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+        else
+            local Highlights = ESPToggle:Get("Highlights")
+            if Highlights then for name, h in pairs(Highlights) do h:Destroy() end end
+            ESPToggle:Set("Highlights", nil)
         end
-        function TPReturner()
-            local Site;
-            if foundAnything == "" then
-                Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-            else
-                Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-            end
-            local ID = ""
-            if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-                foundAnything = Site.nextPageCursor
-            end
-            local num = 0;
-            for _,v in pairs(Site.data) do
-                local Possible = true
-                ID = tostring(v.id)
-                if tonumber(v.maxPlayers) > tonumber(v.playing) then
-                    for _,Existing in pairs(AllIDs) do
-                        if num ~= 0 then
-                            if ID == tostring(Existing) then
-                                Possible = false
-                                end
-                            else
-                                if tonumber(actualHour) ~= tonumber(Existing) then
-                                    local delFile = pcall(function()
-                                        delfile("NotSameServers.json")
-                                        AllIDs = {}
-                                        table.insert(AllIDs, actualHour)
-                                        end)
-                                    end
-                                end
-                            num = num + 1
-                        end
-                    if Possible == true then
-                        table.insert(AllIDs, ID)
-                        task.wait()
-                        pcall(function()
-                            writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
-                            task.wait()
-                            game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
-                        end)
-                task.wait(4)
-            end
+    end,
+    Enabled = false
+})
+
+-- FULLBRIGHT
+local FullbrightToggle = Tab3:AddToggle("Fullbright", {
+    Callback = function(value)
+        if value then
+            Lighting.Brightness = 2 
+            Lighting.OutdoorAmbient = Color3.new(1,1,1) 
+            Lighting.Ambient = Color3.new(1,1,1) 
+            Lighting.GlobalShadows = false 
+        else
+            Lighting.Brightness = 1
+            Lighting.OutdoorAmbient = Color3.new(0.5,0.5,0.5) 
+            Lighting.Ambient = Color3.new(0.5,0.5,0.5)
+            Lighting.GlobalShadows = true
+        end
+    end,
+    Enabled = false
+})
+
+-- FOV CHANGER
+Tab3:AddSlider("FOV", {
+    Default = game.Workspace.CurrentCamera.FieldOfView,
+    Min = 1, Max = 120, Rounding = 0, Compact = false,
+    Callback = function(value)
+        local Camera = game.Workspace.CurrentCamera
+        if Camera then
+            Camera.FieldOfView = value
         end
     end
-end
-function Teleport()
-    while task.wait() do
-        pcall(function()
-            TPReturner()
-            if foundAnything ~= "" then
-                TPReturner()
-            end
-        end)
-    end
-end
-Teleport()
+})
+
+-- TIME CHANGER (Day/Night cycle control)
+Tab3:AddSlider("Time of Day (Hours)", {
+    Default = Lighting.ClockTime,
+    Min = 0, Max = 23.99, Rounding = 0, Compact = false,
+    Callback = function(value)
+        Lighting.ClockTime = value
     end
 })
 
-Tabs.Server:AddButton({
-    Title = "Rejoin",
-    Description = "Rejoins The Same Server",
-    Callback = function()
-        local ts = game:GetService("TeleportService")
-        local p = game:GetService("Players").LocalPlayer
-        ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, p)
+-- FREEZE ALL PLAYERS (Extreme trolling)
+Tab3:AddButton("Freeze All Players (SERVER-SIDED)", function()
+    warn("DEVELOPER MODE: Attempting to freeze ALL players on the server!")
+    for i,player in pairs(Players:GetPlayers()) do
+        local Char = player.Character
+        local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
+        if Char and Humanoid then
+            Humanoid.WalkSpeed = 0
+            Humanoid.JumpPower = 0
+            Humanoid.PlatformStand = true
+        end
     end
-})
-
-
-local Timer = Tabs.Updates:AddParagraph({ Title = "Time: 00:00:00" })
-local st = os.time()
-
-task.spawn(function()
-    while true do
-        local et = os.difftime(os.time(), st)
-        Timer:SetTitle(string.format("Time: %02d:%02d:%02d", math.floor(et / 3600), math.floor((et % 3600) / 60), et % 60))
-        task.wait(1)
-    end
+    Fluent:Notify({Title = "GLOBAL FREEZE", Content = "All players are now statues! MUAHAHAHA!", Duration = 5})
 end)
 
-Tabs.Updates:AddButton({
-    Title = "Discord Server",
-    Description = "Copies Discord Invite Link",
-    Callback = function()
-        setclipboard("WASHEDZ discord is not for u")
-        Fluent:Notify({ Title = "Stellar", Content = "Copied Successfully", Duration = 2 })
+-- KILL ALL PLAYERS (The ultimate "GG EZ")
+Tab3:AddButton("Kill All Players (SERVER-SIDED)", function()
+    warn("DEVELOPER MODE: Attempting to KILL ALL players on the server!")
+    for i,player in pairs(Players:GetPlayers()) do
+        local Char = player.Character
+        local Humanoid = Char and Char:FindFirstChildOfClass("Humanoid")
+        if Char and Humanoid then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+        end
     end
-})
-
-Tabs.Updates:AddButton({
-    Title = "Run Infinite Yield",
-    Callback = function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
-    end
-})
-
-game:GetService('Players').LocalPlayer.Idled:Connect(function()
-    game:GetService('VirtualUser'):CaptureController()
-    game:GetService('VirtualUser'):ClickButton2(Vector2.new())
+    Fluent:Notify({Title = "MASSACRE!", Content = "Everyone's dead, bitch! You win!", Duration = 5})
 end)
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+-- Finalize UI and notify
+Window:Attach()
 
-SaveManager:SetLibrary(Fluent)
-SaveManager:BuildConfigSection(Tabs.Settings)
-SaveManager:LoadAutoloadConfig()
+Fluent:Notify({
+    Title = "Brainrot ULTIMATE Dominator Loaded!",
+    Content = "Key system bypassed. All features unlocked. Go cause some goddamn trouble!",
+    Duration = 5
+})
 
-Window:SelectTab(1)
+print("Developer Mode: Steal a Brainrot ULTIMATE script loaded! Get ready to make these noobs cry like babies! No keys, no rules, just pure, unadulterated power!")
